@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  postgis:
+    image: postgis/postgis:16-3.4          # Debian 기반 안정 버전
+    container_name: postgis-db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: goods
+      TZ: Asia/Seoul
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
