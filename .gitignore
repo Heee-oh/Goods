@@ -42,14 +42,12 @@ out/
 postgres_data/
 /build
 
-frontend/
-/frontend/
+frontend/node_modules/
 
 /uploads/
 
 /src/main/resources/db/
 
-schema.sql
 backup.sql
 
 .gradle-user/
