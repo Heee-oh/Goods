@@ -1,11 +1,7 @@
 type ExchangeRoom = {
   partner_nickname?: string;
   listing_title?: string;
-};
-
-type ExchangeListing = {
-  status?: string;
-  reserver_id?: number | string | null;
+  listing_status?: string | null;
 };
 
 type ExchangeAppointment = {
@@ -15,7 +11,6 @@ type ExchangeAppointment = {
 
 type ExchangeStateInput = {
   room: ExchangeRoom | null;
-  listing: ExchangeListing | null;
   currentAppointment: ExchangeAppointment;
 };
 
@@ -34,15 +29,15 @@ function formatAppointmentLabel(meetAt: string, reminderMinutes: number | null) 
   return `${dateLabel} ${timeLabel} · ${reminderLabel}`;
 }
 
-export function useExchangeState({ room, listing, currentAppointment }: ExchangeStateInput) {
+export function useExchangeState({ room, currentAppointment }: ExchangeStateInput) {
   const partnerNickname = room?.partner_nickname?.trim() || "상대방";
   const listingTitle = room?.listing_title?.trim() || "거래 정보";
 
   const statusLabel = currentAppointment
     ? "약속 설정됨"
-    : listing?.status === "RESERVED"
+    : room?.listing_status === "RESERVED"
       ? "예약중"
-      : listing?.status === "SOLD_OUT"
+      : room?.listing_status === "SOLD_OUT"
         ? "거래 완료"
         : "대화 중";
 
@@ -55,6 +50,6 @@ export function useExchangeState({ room, listing, currentAppointment }: Exchange
     listingTitle,
     statusLabel,
     appointmentLabel,
-    canComplete: Boolean(currentAppointment && listing?.status !== "SOLD_OUT")
+    canComplete: Boolean(currentAppointment && room?.listing_status !== "SOLD_OUT")
   };
 }

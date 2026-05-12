@@ -48,7 +48,7 @@ class AppointmentCommandServiceImplTest {
 
     @Test
     void scheduleCancelsExistingAppointmentAndPublishesEvent() {
-        Instant meetAt = Instant.parse("2026-05-01T10:00:00Z");
+        Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
         ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
         Appointment existing = Appointment.schedule(10L, 1L, 2L, meetAt.minusSeconds(3600), 10);
 
@@ -80,7 +80,7 @@ class AppointmentCommandServiceImplTest {
 
     @Test
     void cancelScheduledAppointmentByParticipant() {
-        Instant meetAt = Instant.parse("2026-05-01T10:00:00Z");
+        Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
         Appointment appointment = Appointment.schedule(10L, 1L, 2L, meetAt, 30);
 
         when(appointmentRepository.findByIdAndStatus(99L, AppointmentStatus.SCHEDULED))

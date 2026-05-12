@@ -11,6 +11,7 @@ import com.goods.market.region.domain.QRegion;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -37,11 +38,17 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
 
     @Override
     public List<ChatRoomSummaryResponse> findSummariesByMemberId(Long memberId) {
+        // 거래 타입이 있다면 사용, null이라면 가격이 0이면 무료 아니면 판매
         StringExpression resolvedTransactionType = Expressions.stringTemplate(
                 "coalesce(lower({0}), case when {1} = 0 then 'free' else 'sell' end)",
                 listing.price.transactionType,
                 listing.price.priceAmount
         );
+
+        NumberExpression<Long> resolvedPriceAmount = new CaseBuilder()
+                .when(resolvedTransactionType.eq("sell"))
+                .then(listing.price.priceAmount.coalesce(0L))
+                .otherwise(0L);
 
         return queryFactory
                 .select(Projections.constructor(
@@ -49,7 +56,7 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
                         chatRoom.id,
                         listing.id,
                         listing.title,
-                        listing.price.priceAmount,
+                        resolvedPriceAmount,
                         listing.status.stringValue(),
                         resolvedTransactionType,
                         image.imageUrl,
@@ -68,7 +75,8 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
                 .leftJoin(listing).on(chatRoom.listingId.eq(listing.id))
                 .leftJoin(image).on(
                         listing.id.eq(image.listing.id)
-                                .and(image.sortOrder.isNull().or(image.sortOrder.eq(0)))
+                                .and(image.sortOrder.isNull()
+                                        .or(image.sortOrder.eq(0)))
                 )
                 .leftJoin(region).on(listing.regionId.eq(region.id))
                 .leftJoin(seller).on(chatRoom.sellerId.eq(seller.id))

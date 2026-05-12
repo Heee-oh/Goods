@@ -11,7 +11,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { apiRequest } from "./api";
 import { getAccessToken, getMemberId } from "./auth";
-import { readCachedJson, writeCachedJson } from "./cache";
+import { writeCachedJson } from "./cache";
 
 type RawChatRoomSummary = {
   chat_room_id?: number | string;
@@ -21,6 +21,8 @@ type RawChatRoomSummary = {
 };
 
 type SocketMessage = {
+  message_id?: number | string;
+  messageId?: number | string;
   chat_room_id?: number | string;
   chatRoomId?: number | string;
   sender_id?: number | string;
@@ -28,10 +30,30 @@ type SocketMessage = {
   content: string;
 };
 
+type NotificationMessage = {
+  notification_type?: string;
+  notificationType?: string;
+  appointment_id?: number | string;
+  appointmentId?: number | string;
+  chat_room_id?: number | string | null;
+  chatRoomId?: number | string | null;
+  partner_nickname?: string;
+  partnerNickname?: string;
+  meet_at?: string;
+  meetAt?: string;
+};
+
 type ToastState = {
   roomId: string;
   partnerNickname: string;
   content: string;
+};
+
+type AppointmentReminderState = {
+  appointmentId: string;
+  chatRoomId: string | null;
+  partnerNickname: string;
+  meetAt: string;
 };
 
 type StompSubscriptionLike = {
@@ -48,8 +70,11 @@ type StompClientLike = {
 type ChatNotificationsContextValue = {
   totalUnreadCount: number;
   unreadCountByRoom: Record<string, number>;
+  roomsVersion: number;
   toast: ToastState | null;
+  appointmentReminder: AppointmentReminderState | null;
   dismissToast: () => void;
+  dismissAppointmentReminder: () => void;
   registerRooms: (rooms: Array<{ chatRoomId: string; partnerNickname?: string | null }>) => void;
   registerRoom: (room: { chatRoomId: string; partnerNickname?: string | null }) => void;
   markRoomRead: (chatRoomId: string) => void;
@@ -106,11 +131,17 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
   const activeChatRoomId = getActiveChatRoomId(location.pathname);
 
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [appointmentReminder, setAppointmentReminder] = useState<AppointmentReminderState | null>(null);
   const [unreadCountByRoom, setUnreadCountByRoom] = useState<Record<string, number>>(loadUnreadCounts);
   const [roomDirectory, setRoomDirectory] = useState<Record<string, { partnerNickname: string | null }>>({});
+  const [roomsVersion, setRoomsVersion] = useState(0);
 
   const roomDirectoryRef = useRef(roomDirectory);
   const subscriptionsRef = useRef<Map<string, StompSubscriptionLike>>(new Map());
+  const memberSubscriptionRef = useRef<StompSubscriptionLike | null>(null);
+  const notificationSubscriptionRef = useRef<StompSubscriptionLike | null>(null);
+  const seenMessageKeysRef = useRef<Set<string>>(new Set());
+  const seenNotificationKeysRef = useRef<Set<string>>(new Set());
   const stompRef = useRef<StompClientLike | null>(null);
   const activeChatRoomIdRef = useRef(activeChatRoomId);
   const memberIdRef = useRef(memberId);
@@ -180,6 +211,72 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  const refreshRooms = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+
+    const cacheKey = memberId ? `${CHAT_ROOMS_CACHE_PREFIX}:${memberId}` : CHAT_ROOMS_CACHE_PREFIX;
+    const response = await apiRequest<RawChatRoomSummary[]>("/api/chat-rooms");
+    writeCachedJson(cacheKey, response);
+
+    const rooms = response
+      .map(normalizeRoom)
+      .filter((room): room is NonNullable<ReturnType<typeof normalizeRoom>> => room !== null);
+
+    registerRooms(rooms);
+    setRoomsVersion((current) => current + 1);
+  }, [memberId, registerRooms, token]);
+
+  const handleIncomingChatEvent = useCallback(
+    (payload: SocketMessage, fallbackRoomId?: string, refreshAfterReceive = false) => {
+      const incomingRoomId = String(payload.chat_room_id ?? payload.chatRoomId ?? fallbackRoomId ?? "");
+      if (!incomingRoomId) {
+        return;
+      }
+
+      const senderId = String(payload.sender_id ?? payload.senderId ?? "");
+      if (!senderId || senderId === memberIdRef.current) {
+        return;
+      }
+
+      const messageId = String(payload.message_id ?? payload.messageId ?? `${senderId}:${payload.content}`);
+      const messageKey = `${incomingRoomId}:${messageId}`;
+      if (seenMessageKeysRef.current.has(messageKey)) {
+        return;
+      }
+
+      seenMessageKeysRef.current.add(messageKey);
+      if (seenMessageKeysRef.current.size > 500) {
+        const oldestKey = seenMessageKeysRef.current.values().next().value;
+        if (oldestKey) {
+          seenMessageKeysRef.current.delete(oldestKey);
+        }
+      }
+
+      if (activeChatRoomIdRef.current !== incomingRoomId) {
+        setUnreadCountByRoom((current) => ({
+          ...current,
+          [incomingRoomId]: (current[incomingRoomId] ?? 0) + 1
+        }));
+
+        const partnerNickname =
+          roomDirectoryRef.current[incomingRoomId]?.partnerNickname ?? "새 메시지";
+
+        setToast({
+          roomId: incomingRoomId,
+          partnerNickname,
+          content: payload.content
+        });
+      }
+
+      if (refreshAfterReceive) {
+        void refreshRooms();
+      }
+    },
+    [refreshRooms]
+  );
+
   useEffect(() => {
     if (!activeChatRoomId) {
       return;
@@ -191,12 +288,18 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!token) {
       setToast(null);
+      setAppointmentReminder(null);
       setUnreadCountByRoom({});
       subscriptionsRef.current.forEach((subscription) => subscription.unsubscribe());
       subscriptionsRef.current.clear();
+      memberSubscriptionRef.current?.unsubscribe();
+      memberSubscriptionRef.current = null;
+      notificationSubscriptionRef.current?.unsubscribe();
+      notificationSubscriptionRef.current = null;
       void stompRef.current?.deactivate();
       stompRef.current = null;
       setRoomDirectory({});
+      seenNotificationKeysRef.current.clear();
       return;
     }
 
@@ -219,33 +322,7 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
 
         const subscription = client.subscribe(`/sub/chat/room/${roomId}`, (frame: { body: string }) => {
           const payload = JSON.parse(frame.body) as SocketMessage;
-          const incomingRoomId = String(payload.chat_room_id ?? payload.chatRoomId ?? "");
-          if (!incomingRoomId || incomingRoomId !== roomId) {
-            return;
-          }
-
-          const senderId = String(payload.sender_id ?? payload.senderId ?? "");
-          if (!senderId || senderId === memberIdRef.current) {
-            return;
-          }
-
-          if (activeChatRoomIdRef.current === roomId) {
-            return;
-          }
-
-          setUnreadCountByRoom((current) => ({
-            ...current,
-            [roomId]: (current[roomId] ?? 0) + 1
-          }));
-
-          const partnerNickname =
-            roomDirectoryRef.current[roomId]?.partnerNickname ?? "새 메시지";
-
-          setToast({
-            roomId,
-            partnerNickname,
-            content: payload.content
-          });
+          handleIncomingChatEvent(payload, roomId);
         });
 
         subscriptionsRef.current.set(roomId, subscription);
@@ -269,18 +346,61 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
 
         const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
+        const handleNotificationEvent = (frame: { body: string }) => {
+          const payload = JSON.parse(frame.body) as NotificationMessage;
+          const notificationType = payload.notification_type ?? payload.notificationType;
+          if (notificationType !== "APPOINTMENT_ALARM") {
+            return;
+          }
+
+          const appointmentId = String(payload.appointment_id ?? payload.appointmentId ?? "");
+          if (!appointmentId || seenNotificationKeysRef.current.has(appointmentId)) {
+            return;
+          }
+
+          seenNotificationKeysRef.current.add(appointmentId);
+          setAppointmentReminder({
+            appointmentId,
+            chatRoomId:
+              payload.chat_room_id != null || payload.chatRoomId != null
+                ? String(payload.chat_room_id ?? payload.chatRoomId)
+                : null,
+            partnerNickname: payload.partner_nickname ?? payload.partnerNickname ?? "상대방",
+            meetAt: payload.meet_at ?? payload.meetAt ?? ""
+          });
+        };
+
         const client = new Client({
           webSocketFactory: () => new SockJS(`${apiBaseUrl}/ws-chat`),
           reconnectDelay: 5000,
           connectHeaders: { Authorization: `Bearer ${token}` },
           onConnect: () => {
             if (!disposed) {
+              if (memberId && !memberSubscriptionRef.current) {
+                memberSubscriptionRef.current = client.subscribe(
+                  `/sub/members/${memberId}/chat-events`,
+                  (frame: { body: string }) => {
+                    const payload = JSON.parse(frame.body) as SocketMessage;
+                    handleIncomingChatEvent(payload, undefined, true);
+                  }
+                );
+              }
+
+              if (memberId && !notificationSubscriptionRef.current) {
+                notificationSubscriptionRef.current = client.subscribe(
+                  `/sub/members/${memberId}/notifications`,
+                  handleNotificationEvent
+                );
+              }
+
               syncSubscriptions(client as unknown as StompClientLike);
             }
           },
           onWebSocketClose: () => {
             if (!disposed) {
               subscriptionsRef.current.clear();
+              memberSubscriptionRef.current = null;
+              notificationSubscriptionRef.current = null;
             }
           }
         });
@@ -298,10 +418,14 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
       disposed = true;
       subscriptionsRef.current.forEach((subscription) => subscription.unsubscribe());
       subscriptionsRef.current.clear();
+      memberSubscriptionRef.current?.unsubscribe();
+      memberSubscriptionRef.current = null;
+      notificationSubscriptionRef.current?.unsubscribe();
+      notificationSubscriptionRef.current = null;
       void stompRef.current?.deactivate();
       stompRef.current = null;
     };
-  }, [token]);
+  }, [handleIncomingChatEvent, memberId, token]);
 
   useEffect(() => {
     if (stompRef.current?.connected) {
@@ -322,75 +446,29 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
 
         const subscription = client.subscribe(`/sub/chat/room/${roomId}`, (frame: { body: string }) => {
           const payload = JSON.parse(frame.body) as SocketMessage;
-          const incomingRoomId = String(payload.chat_room_id ?? payload.chatRoomId ?? "");
-          if (!incomingRoomId || incomingRoomId !== roomId) {
-            return;
-          }
-
-          const senderId = String(payload.sender_id ?? payload.senderId ?? "");
-          if (!senderId || senderId === memberIdRef.current) {
-            return;
-          }
-
-          if (activeChatRoomIdRef.current === roomId) {
-            return;
-          }
-
-          setUnreadCountByRoom((current) => ({
-            ...current,
-            [roomId]: (current[roomId] ?? 0) + 1
-          }));
-
-          const partnerNickname =
-            roomDirectoryRef.current[roomId]?.partnerNickname ?? "새 메시지";
-
-          setToast({
-            roomId,
-            partnerNickname,
-            content: payload.content
-          });
+          handleIncomingChatEvent(payload, roomId);
         });
 
         subscriptionsRef.current.set(roomId, subscription);
       });
     }
-  }, [roomDirectory]);
+  }, [handleIncomingChatEvent, roomDirectory]);
 
   useEffect(() => {
     if (!token) {
       return;
     }
-    if (!location.pathname.startsWith("/chatting")) {
-      return;
-    }
 
     const loadRooms = async () => {
       try {
-        const cacheKey = memberId ? `${CHAT_ROOMS_CACHE_PREFIX}:${memberId}` : CHAT_ROOMS_CACHE_PREFIX;
-        const cachedRooms = readCachedJson<RawChatRoomSummary[]>(cacheKey);
-        if (cachedRooms) {
-          const rooms = cachedRooms
-            .map(normalizeRoom)
-            .filter((room): room is NonNullable<ReturnType<typeof normalizeRoom>> => room !== null);
-
-          registerRooms(rooms);
-          return;
-        }
-
-        const response = await apiRequest<RawChatRoomSummary[]>("/api/chat-rooms");
-        writeCachedJson(cacheKey, response);
-        const rooms = response
-          .map(normalizeRoom)
-          .filter((room): room is NonNullable<ReturnType<typeof normalizeRoom>> => room !== null);
-
-        registerRooms(rooms);
+        await refreshRooms();
       } catch (error) {
         console.error("[chat][notifications] failed to load rooms", error);
       }
     };
 
     void loadRooms();
-  }, [location.pathname, memberId, registerRooms, token]);
+  }, [refreshRooms, token]);
 
   useEffect(() => {
     if (!toast) {
@@ -415,13 +493,16 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
     () => ({
       totalUnreadCount,
       unreadCountByRoom,
+      roomsVersion,
       toast,
+      appointmentReminder,
       dismissToast: () => setToast(null),
+      dismissAppointmentReminder: () => setAppointmentReminder(null),
       registerRooms,
       registerRoom,
       markRoomRead
     }),
-    [markRoomRead, registerRoom, registerRooms, toast, totalUnreadCount, unreadCountByRoom]
+    [appointmentReminder, markRoomRead, registerRoom, registerRooms, roomsVersion, toast, totalUnreadCount, unreadCountByRoom]
   );
 
   return (

@@ -33,6 +33,7 @@ export const APPOINTMENT_TEXT = {
   },
   reminders: [
     { value: null, label: "\uC5C6\uC74C" },
+    { value: 1, label: "1\uBD84 \uC804" },
     { value: 5, label: "5\uBD84 \uC804" },
     { value: 15, label: "15\uBD84 \uC804" },
     { value: 30, label: "30\uBD84 \uC804" },

@@ -1,13 +1,10 @@
 package com.goods.market.listing.domain;
 
+import com.goods.market.listing.exception.ListingBadRequestException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.PostLoad;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Transient;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -24,29 +21,14 @@ public class Price {
     private TransactionType transactionType;
 
     public Price(Long priceAmount, TransactionType transactionType) {
-        this.transactionType = transactionType;
-        this.priceAmount = transactionType != null && transactionType.isSell() ? priceAmount : 0L;
-    }
-
-    @PostLoad
-    @PrePersist
-    @PreUpdate
-    void normalize() {
         if (transactionType == null) {
-            transactionType = priceAmount != null && priceAmount == 0L ? TransactionType.FREE : TransactionType.SELL;
+            throw new ListingBadRequestException("Invalid transaction type");
         }
 
-        if (transactionType.isSell()) {
-            if (priceAmount == null) {
-                priceAmount = 0L;
-            }
-            return;
-        }
-
-        priceAmount = 0L;
+        this.transactionType = transactionType;
+        this.priceAmount = normalizePriceAmount(priceAmount, transactionType);
     }
 
-    @Transient
     public TransactionType resolveTransactionType() {
         if (transactionType != null) {
             return transactionType;
@@ -69,5 +51,25 @@ public class Price {
 
     public boolean isSell() {
         return resolveTransactionType().isSell();
+    }
+
+    public Long getPriceAmount() {
+        TransactionType resolvedTransactionType = resolveTransactionType();
+        if (!resolvedTransactionType.isSell()) {
+            return 0L;
+        }
+
+        return priceAmount == null ? 0L : priceAmount;
+    }
+
+    private Long normalizePriceAmount(Long priceAmount, TransactionType transactionType) {
+        if (!transactionType.isSell()) {
+            return 0L;
+        }
+        if (priceAmount == null) {
+            throw new ListingBadRequestException("Invalid price");
+        }
+
+        return priceAmount;
     }
 }

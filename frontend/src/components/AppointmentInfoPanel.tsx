@@ -85,6 +85,28 @@ function formatReminderText(value: number | null) {
   return APPOINTMENT_TEXT.reminders.find((option) => option.value === value)?.label ?? APPOINTMENT_TEXT.reminders[0].label;
 }
 
+function getReminderValidationError(
+  dateValue: string,
+  timeValue: string,
+  reminderMinutes: number | null
+) {
+  if (reminderMinutes == null) {
+    return null;
+  }
+
+  const meetAt = fromDateAndTime(dateValue, timeValue);
+  if (Number.isNaN(meetAt.getTime())) {
+    return "약속 시간을 다시 확인해 주세요.";
+  }
+
+  const reminderAt = meetAt.getTime() - reminderMinutes * 60_000;
+  if (reminderAt < Date.now()) {
+    return "선택한 알림 시간이 이미 지났습니다.";
+  }
+
+  return null;
+}
+
 export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, AppointmentInfoPanelProps>(function AppointmentInfoPanel({
   partnerNickname,
   currentAppointment,
@@ -103,6 +125,8 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
   const [appointmentTime, setAppointmentTime] = useState(toTimeInputValue(initialDateTime));
   const [appointmentReminder, setAppointmentReminder] = useState<number | null>(30);
   const [actionError, setActionError] = useState("");
+  const reminderValidationError = getReminderValidationError(appointmentDate, appointmentTime, appointmentReminder);
+  const visibleError = actionError || reminderValidationError;
 
   const openComposer = () => {
     const baseDate = currentAppointment ? new Date(currentAppointment.meet_at) : new Date();
@@ -129,8 +153,14 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
   );
 
   const handleCreate = async () => {
+    if (reminderValidationError) {
+      setActionError(reminderValidationError);
+      return;
+    }
+
     const meetAt = fromDateAndTime(appointmentDate, appointmentTime);
     if (Number.isNaN(meetAt.getTime())) {
+      setActionError("약속 시간을 다시 확인해 주세요.");
       return;
     }
 
@@ -222,7 +252,10 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                   <input
                     type="date"
                     value={appointmentDate}
-                    onChange={(event) => setAppointmentDate(event.target.value)}
+                    onChange={(event) => {
+                      setActionError("");
+                      setAppointmentDate(event.target.value);
+                    }}
                   />
                 </label>
                 <label className="chat-sheet-row">
@@ -231,7 +264,10 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                     type="time"
                     value={appointmentTime}
                     step={300}
-                    onChange={(event) => setAppointmentTime(event.target.value)}
+                    onChange={(event) => {
+                      setActionError("");
+                      setAppointmentTime(event.target.value);
+                    }}
                   />
                 </label>
                 <div className="chat-sheet-row">
@@ -244,20 +280,23 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                     {APPOINTMENT_TEXT.reminders.map((option) => (
                       <button
                         key={option.label}
-                        type="button"
-                        className={
-                          appointmentReminder === option.value
-                            ? "chat-reminder-chip active"
-                            : "chat-reminder-chip"
-                        }
-                        onClick={() => setAppointmentReminder(option.value)}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
+                      type="button"
+                      className={
+                        appointmentReminder === option.value
+                          ? "chat-reminder-chip active"
+                          : "chat-reminder-chip"
+                      }
+                      onClick={() => {
+                        setActionError("");
+                        setAppointmentReminder(option.value);
+                      }}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
-                {actionError ? <p className="chat-sheet-error">{actionError}</p> : null}
+              </div>
+                {visibleError ? <p className="chat-sheet-error">{visibleError}</p> : null}
               </div>
             </div>
             <div className="chat-sheet-actions">
@@ -272,7 +311,7 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                 type="button"
                 className="chat-sheet-primary"
                 onClick={() => void handleCreate()}
-                disabled={busy}
+                disabled={busy || reminderValidationError != null}
               >
                 {busy ? APPOINTMENT_TEXT.common.loading : APPOINTMENT_TEXT.composer.submit}
               </button>

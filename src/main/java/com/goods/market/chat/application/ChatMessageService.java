@@ -1,5 +1,6 @@
 package com.goods.market.chat.application;
 
+import com.goods.market.chat.application.dto.ChatMessageSendResult;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.ChatMessageSentEvent;
 import com.goods.market.chat.domain.ChatMessage;
@@ -18,6 +19,7 @@ import com.goods.market.chat.presentation.dto.ChatMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
@@ -29,7 +31,8 @@ public class ChatMessageService {
     private final ChatReadRepository chatReadRepository;
     private final DomainEventPublisher domainEventPublisher;
 
-    public ChatMessageResponse saveMessage(ChatMessageRequest request, Long senderId) {
+    @Transactional
+    public ChatMessageSendResult saveMessage(ChatMessageRequest request, Long senderId) {
         ChatRoom chatRoom = chatRoomRepository.findById(request.chatRoomId())
                 .orElseThrow(() -> new ChatRoomNotFoundException("채팅방이 없습니다."));
 
@@ -42,6 +45,8 @@ public class ChatMessageService {
         if (chatRoom.getStatus() != ChatRoomStatus.ACTIVE) {
             throw new ChatRoomInactiveException("비활성화된 채팅방입니다.");
         }
+
+        boolean firstMessage = !chatMessageRepository.existsByChatRoomId(chatRoom.getId());
 
         ChatMessage message = ChatMessage.create(senderId, request.chatRoomId(), request.type(), request.content());
         ChatMessage saved = chatMessageRepository.save(message);
@@ -64,6 +69,15 @@ public class ChatMessageService {
                 saved.getContent()
         ));
 
-        return new ChatMessageResponse(chatRoom.getId(), saved.getId(), saved.getSenderId(), saved.getType(), saved.getContent(), saved.getCreatedAt());
+        ChatMessageResponse response = new ChatMessageResponse(
+                chatRoom.getId(),
+                saved.getId(),
+                saved.getSenderId(),
+                saved.getType(),
+                saved.getContent(),
+                saved.getCreatedAt()
+        );
+
+        return new ChatMessageSendResult(response, otherMemberId, firstMessage);
     }
 }

@@ -5,7 +5,6 @@ import com.goods.market.common.event.events.TradeCompletedEvent;
 import com.goods.market.trade.domain.Trade;
 import com.goods.market.trade.infrastructure.TradeRepository;
 import com.goods.market.listing.domain.Listing;
-import com.goods.market.listing.domain.TransactionType;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,7 @@ public class TradeCommandServiceImpl implements TradeCommandService {
 
         Long price = listing.getPrice() == null
                 ? 0L
-                : (listing.getPrice().resolveTransactionType() == TransactionType.FREE ? 0L : listing.getPrice().getPriceAmount());
+                : listing.getPrice().getPriceAmount();
 
         return complete(listingId, sellerId, buyerId, price);
     }

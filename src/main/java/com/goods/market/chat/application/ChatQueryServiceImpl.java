@@ -46,14 +46,20 @@ public class ChatQueryServiceImpl implements ChatQueryService {
                 .filter(room -> room.isParticipant(memberId))
                 .orElseThrow(() -> new ChatRoomNotFoundException("채팅방을 찾을 수 없습니다."));
 
-        Listing listing = listingJpaRepository.findActiveByIdWithImages(chatRoom.getListingId())
+        Listing listing = listingJpaRepository.findByIdWithImages(chatRoom.getListingId())
                 .orElse(null);
-        String listingImageUrl = listing != null
+
+        String listingImageUrl = (listing != null)
                 ? listing.getImages().stream()
                 .sorted(Comparator.comparingInt(ListingImage::getSortOrder))
                 .map(ListingImage::getImageUrl)
                 .findFirst()
                 .orElse(null)
+                : null;
+
+        String listingStatus = listing != null ? listing.getStatus().name() : null;
+        String listingTransactionType = listing != null && listing.getPrice() != null
+                ? listing.getPrice().getTransactionType().getValue()
                 : null;
 
         Long partnerId = getPartnerId(chatRoom, memberId);
@@ -87,6 +93,10 @@ public class ChatQueryServiceImpl implements ChatQueryService {
         return new ChatRoomDetailResponse(
                 chatRoom.getId(),
                 chatRoom.getListingId(),
+                listingImageUrl,
+                listingStatus,
+                listingTransactionType,
+                chatRoom.getSellerId(),
                 partnerId,
                 partner != null ? partner.getNickname() : "상대 사용자",
                 partner != null ? partner.getProfileImageUrl() : null,

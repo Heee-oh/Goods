@@ -101,7 +101,7 @@ function createInitialSize() {
 
 export function ChatDock() {
   const navigate = useNavigate();
-  const { registerRooms, unreadCountByRoom, markRoomRead } = useChatNotifications();
+  const { registerRooms, roomsVersion, unreadCountByRoom, markRoomRead } = useChatNotifications();
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -109,13 +109,15 @@ export function ChatDock() {
   const [expandedListingIds, setExpandedListingIds] = useState<Set<string>>(() => new Set());
   const zIndexRef = useRef(20);
 
-  const loadRooms = useCallback(async () => {
+  const loadRooms = useCallback(async (options: { useCache?: boolean } = {}) => {
+    const useCache = options.useCache ?? true;
+
     try {
       setError("");
 
       const memberId = getMemberId();
       const cacheKey = memberId ? `${CHAT_ROOMS_CACHE_PREFIX}:${memberId}` : CHAT_ROOMS_CACHE_PREFIX;
-      const cachedRooms = readCachedJson<RawChatRoomSummary[]>(cacheKey);
+      const cachedRooms = useCache ? readCachedJson<RawChatRoomSummary[]>(cacheKey) : null;
       if (cachedRooms) {
         const nextRooms = cachedRooms
           .map(normalizeChatRoomSummary)
@@ -129,10 +131,10 @@ export function ChatDock() {
           }))
         );
         setLoading(false);
-        return;
+      } else {
+        setLoading(true);
       }
 
-      setLoading(true);
       const response = await apiRequest<RawChatRoomSummary[]>("/api/chat-rooms");
       writeCachedJson(cacheKey, response);
       const nextRooms = response
@@ -161,6 +163,26 @@ export function ChatDock() {
 
   useEffect(() => {
     void loadRooms();
+  }, [loadRooms]);
+
+  useEffect(() => {
+    if (roomsVersion === 0) {
+      return;
+    }
+
+    void loadRooms({ useCache: false });
+  }, [loadRooms, roomsVersion]);
+
+  useEffect(() => {
+    const reloadOnFocus = () => {
+      void loadRooms({ useCache: false });
+    };
+
+    window.addEventListener("focus", reloadOnFocus);
+
+    return () => {
+      window.removeEventListener("focus", reloadOnFocus);
+    };
   }, [loadRooms]);
 
   const openRoom = useCallback(
