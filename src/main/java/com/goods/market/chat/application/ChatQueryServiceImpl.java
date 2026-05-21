@@ -5,10 +5,10 @@ import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.exception.ChatRoomNotFoundException;
 import com.goods.market.chat.infrastructure.ChatMessageRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
-import com.goods.market.chat.presentation.dto.ChatMessageItemResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomAppointmentResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomDetailResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomSummaryResponse;
+import com.goods.market.chat.application.dto.ChatMessageItemDto;
+import com.goods.market.chat.application.dto.ChatRoomAppointmentDto;
+import com.goods.market.chat.application.dto.ChatRoomDetailDto;
+import com.goods.market.chat.application.dto.ChatRoomSummaryDto;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
 import com.goods.market.listing.domain.Listing;
@@ -35,12 +35,12 @@ public class ChatQueryServiceImpl implements ChatQueryService {
     private final AppointmentRepository appointmentRepository;
 
     @Override
-    public List<ChatRoomSummaryResponse> getChatRooms(Long memberId) {
+    public List<ChatRoomSummaryDto> getChatRooms(Long memberId) {
         return chatRoomRepository.findSummariesByMemberId(memberId);
     }
 
     @Override
-    public ChatRoomDetailResponse getChatRoom(Long memberId, Long chatRoomId) {
+    public ChatRoomDetailDto getChatRoom(Long memberId, Long chatRoomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .filter(room -> room.getStatus() == ChatRoomStatus.ACTIVE)
                 .filter(room -> room.isParticipant(memberId))
@@ -66,9 +66,9 @@ public class ChatQueryServiceImpl implements ChatQueryService {
         Member partner = memberJpaRepository.findById(partnerId)
                 .orElse(null);
 
-        List<ChatMessageItemResponse> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAscIdAsc(chatRoomId)
+        List<ChatMessageItemDto> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAscIdAsc(chatRoomId)
                 .stream()
-                .map(message -> new ChatMessageItemResponse(
+                .map(message -> new ChatMessageItemDto(
                         message.getId(),
                         message.getSenderId(),
                         message.getType(),
@@ -77,20 +77,20 @@ public class ChatQueryServiceImpl implements ChatQueryService {
                 ))
                 .toList();
 
-        ChatRoomAppointmentResponse currentAppointment = appointmentRepository
+        ChatRoomAppointmentDto currentAppointment = appointmentRepository
                 .findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
                         chatRoom.getListingId(),
                         chatRoom.getBuyerId(),
                         AppointmentStatus.SCHEDULED
                 )
-                .map(appointment -> new ChatRoomAppointmentResponse(
+                .map(appointment -> new ChatRoomAppointmentDto(
                         appointment.getId(),
                         appointment.getMeetAt(),
                         appointment.getReminderMinutes()
                 ))
                 .orElse(null);
 
-        return new ChatRoomDetailResponse(
+        return new ChatRoomDetailDto(
                 chatRoom.getId(),
                 chatRoom.getListingId(),
                 listingImageUrl,

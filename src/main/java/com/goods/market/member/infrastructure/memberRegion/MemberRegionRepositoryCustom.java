@@ -1,9 +1,9 @@
 package com.goods.market.member.infrastructure.memberRegion;
 
-import com.goods.market.member.application.dto.MemberRegionResponse;
+import com.goods.market.member.application.dto.MemberRegionDto;
 
 import java.util.List;
 
 public interface MemberRegionRepositoryCustom {
-    List<MemberRegionResponse> findAllByMember(Long memberId);
+    List<MemberRegionDto> findAllByMember(Long memberId);
 }

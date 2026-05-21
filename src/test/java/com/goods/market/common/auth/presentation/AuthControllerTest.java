@@ -3,7 +3,7 @@ package com.goods.market.common.auth.presentation;
 import com.goods.market.common.auth.application.AuthService;
 import com.goods.market.common.auth.application.dto.AuthLoginCommand;
 import com.goods.market.common.auth.application.dto.AuthSignupCommand;
-import com.goods.market.common.auth.application.dto.AuthTokenResponse;
+import com.goods.market.common.auth.application.dto.AuthTokenDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +44,7 @@ class AuthControllerTest {
     @Test
     void signupReturnsCreatedToken() throws Exception {
         when(authService.signup(any(AuthSignupCommand.class)))
-                .thenReturn(new AuthTokenResponse(1L, "token-1", 3600L));
+                .thenReturn(new AuthTokenDto(1L, "token-1", 3600L));
 
                 mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +68,7 @@ class AuthControllerTest {
     @Test
     void loginReturnsToken() throws Exception {
         when(authService.login(any(AuthLoginCommand.class)))
-                .thenReturn(new AuthTokenResponse(1L, "token-1", 3600L));
+                .thenReturn(new AuthTokenDto(1L, "token-1", 3600L));
 
                 mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

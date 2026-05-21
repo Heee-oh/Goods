@@ -1,6 +1,8 @@
 package com.goods.market.chat.application;
 
 import com.goods.market.chat.application.dto.ChatMessageSendResult;
+import com.goods.market.chat.application.dto.ChatMessageCreateDto;
+import com.goods.market.chat.application.dto.ChatMessageDto;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.ChatMessageSentEvent;
 import com.goods.market.chat.domain.ChatMessage;
@@ -14,8 +16,6 @@ import com.goods.market.chat.exception.ChatRoomParticipantException;
 import com.goods.market.chat.infrastructure.ChatMessageRepository;
 import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
-import com.goods.market.chat.presentation.dto.ChatMessageRequest;
-import com.goods.market.chat.presentation.dto.ChatMessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class ChatMessageService {
     private final DomainEventPublisher domainEventPublisher;
 
     @Transactional
-    public ChatMessageSendResult saveMessage(ChatMessageRequest request, Long senderId) {
+    public ChatMessageSendResult saveMessage(ChatMessageCreateDto request, Long senderId) {
         ChatRoom chatRoom = chatRoomRepository.findById(request.chatRoomId())
                 .orElseThrow(() -> new ChatRoomNotFoundException("채팅방이 없습니다."));
 
@@ -69,7 +69,7 @@ public class ChatMessageService {
                 saved.getContent()
         ));
 
-        ChatMessageResponse response = new ChatMessageResponse(
+        ChatMessageDto response = new ChatMessageDto(
                 chatRoom.getId(),
                 saved.getId(),
                 saved.getSenderId(),

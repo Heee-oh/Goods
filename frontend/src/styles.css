@@ -1253,18 +1253,18 @@ button {
   font-size: 16px;
 }
 
-.listing-seller-temp {
+.listing-seller-score {
   text-align: right;
 }
 
-.listing-seller-temp strong {
+.listing-seller-score strong {
   display: block;
   color: var(--brand-deep);
   font-size: 24px;
   line-height: 1.1;
 }
 
-.listing-seller-temp span {
+.listing-seller-score span {
   color: #9299a3;
   font-size: 14px;
   text-decoration: underline;
@@ -2295,25 +2295,25 @@ button {
   padding: 24px 18px 120px;
 }
 
-.page-my-daangn {
+.page-my-profile {
   padding: 18px 14px 120px;
   background: #f5f5f5;
 }
 
-.my-daangn-header {
+.my-profile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 2px 18px;
 }
 
-.my-daangn-header h1 {
+.my-profile-header h1 {
   margin: 0;
   font-size: 24px;
   letter-spacing: -0.03em;
 }
 
-.my-daangn-settings {
+.my-profile-settings {
   width: 34px;
   height: 34px;
   display: grid;
@@ -2358,7 +2358,7 @@ button {
   line-height: 1.1;
 }
 
-.my-temp-badge {
+.my-score-badge {
   padding: 5px 9px;
   border-radius: 999px;
   background: #eaf2ff;
@@ -2629,6 +2629,13 @@ button {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
+.chat-list-group-item,
+.chat-dock-group-head,
+.chat-dock-item,
+.chat-dock-group {
+  will-change: transform;
+}
+
 .chat-list-group-item:hover,
 .chat-dock-group-head:hover {
   border-color: rgba(212, 175, 55, 0.28);
@@ -2816,7 +2823,7 @@ button {
   font-size: 20px;
 }
 
-.chat-room-temp {
+.chat-room-score {
   padding: 6px 12px;
   border-radius: 999px;
   background: #eaf2ff;

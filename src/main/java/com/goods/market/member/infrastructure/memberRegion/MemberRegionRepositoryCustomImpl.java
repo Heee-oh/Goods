@@ -1,7 +1,7 @@
 package com.goods.market.member.infrastructure.memberRegion;
 
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.QMemberRegionResponse;
+import com.goods.market.member.application.dto.MemberRegionDto;
+import com.goods.market.member.application.dto.QMemberRegionDto;
 import com.goods.market.member.domain.QMemberRegion;
 import com.goods.market.region.domain.QRegion;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -21,10 +21,10 @@ public class MemberRegionRepositoryCustomImpl implements MemberRegionRepositoryC
     private final QRegion region = QRegion.region;
 
     @Override
-    public List<MemberRegionResponse> findAllByMember(Long memberId) {
+    public List<MemberRegionDto> findAllByMember(Long memberId) {
 
         return queryFactory
-                .select(new QMemberRegionResponse(
+                .select(new QMemberRegionDto(
                         memberRegion.id,
                         memberRegion.regionId,
                         memberRegion.verifiedAt,

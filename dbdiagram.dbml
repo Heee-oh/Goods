@@ -1,0 +1,238 @@
+Project Goods {
+  database_type: 'PostgreSQL'
+  Note: 'Generated from schema.sql. Only DB-enforced foreign keys are rendered as Ref entries.'
+}
+
+Enum appointment_status {
+  SCHEDULED
+  CANCELED
+  DONE
+}
+
+Enum chat_message_type {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+Enum chat_room_status {
+  ACTIVE
+  CLOSED
+}
+
+Enum listing_status {
+  DRAFT
+  PUBLISHED
+  RESERVED
+  SOLD_OUT
+}
+
+Enum transaction_type {
+  SELL
+  TRADE
+  FREE
+}
+
+Enum member_status {
+  ACTIVE
+  SUSPENDED
+  WITHDRAWN
+}
+
+Enum notification_type {
+  NEW_CHAT
+  LISTING_KEYWORD
+  APPOINTMENT_ALARM
+  SOLD_OUT
+  RESERVATION_CANCELED
+  REVIEW_REQUEST
+  TRADE_COMPLETE_PROMPT
+}
+
+Enum trade_status {
+  COMPLETED
+  CANCELED
+}
+
+Table appointment {
+  appointment_id bigint [pk, increment, not null]
+  buyer_id bigint [not null]
+  created_at timestamp [not null]
+  listing_id bigint [not null]
+  meet_at timestamp [not null]
+  meet_lat numeric(10,7)
+  meet_lng numeric(10,7)
+  meet_place_text varchar(200)
+  notification_time timestamp
+  reminder_sent_at timestamp
+  seller_id bigint [not null]
+  status appointment_status [not null]
+  trade_prompt_dismissed_at timestamp
+  trade_prompt_sent_at timestamp
+  updated_at timestamp [not null]
+}
+
+Table chat_message {
+  message_id bigint [pk, increment, not null]
+  chat_room_id bigint [not null]
+  content text [not null]
+  created_at timestamp [not null]
+  sender_id bigint [not null]
+  type chat_message_type [not null]
+}
+
+Table chat_read {
+  chat_read_id bigint [pk, increment, not null]
+  chat_room_id bigint [not null]
+  last_read_message_id bigint
+  member_id bigint [not null]
+  updated_at timestamp [not null]
+}
+
+Table chat_room {
+  chat_room_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  buyer_id bigint [not null]
+  listing_id bigint [not null]
+  seller_id bigint [not null]
+  status chat_room_status [not null]
+}
+
+Table keyword_subscription {
+  subscription_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  keyword varchar(100) [not null]
+  member_id bigint [not null]
+  region_id integer
+}
+
+Table listing {
+  listing_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  buyer_id bigint
+  category_id bigint
+  deleted_at timestamp
+  description text
+  hope_lat numeric(10,7)
+  hope_lng numeric(10,7)
+  hope_region_id integer
+  is_hidden boolean
+  is_free boolean
+  price bigint [not null]
+  region_id integer
+  reserver_id bigint
+  seller_id bigint [not null]
+  status listing_status [not null]
+  title varchar(200) [not null]
+  view_count bigint [not null]
+  transaction_type transaction_type
+  origin_lat numeric(10,7)
+  origin_lng numeric(10,7)
+  origin_region_id integer
+}
+
+Table listing_image {
+  image_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  image_url varchar(500) [not null]
+  sort_order integer [not null]
+  listing_id bigint [not null]
+}
+
+Table member {
+  member_id bigint [pk, not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  nickname varchar(50) [not null]
+  phone_number varchar(20) [not null]
+  profile_image varchar(500)
+  status member_status [not null]
+  withdrawn_at timestamp
+  smile_score integer [not null, default: 365]
+
+  indexes {
+    phone_number [unique, name: 'ukn2qryhkfoqeel6njfhrcq6k7u']
+  }
+}
+
+Table member_interest {
+  interest_id bigint [pk, increment, not null]
+  listing_id bigint [not null]
+  member_id bigint [not null]
+}
+
+Table member_region {
+  member_region_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  is_primary boolean [not null]
+  region_id integer [not null]
+  verified_at timestamp
+  member_id bigint [not null]
+  lat numeric(10,7)
+  lng numeric(10,7)
+}
+
+Table notification {
+  notification_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  member_id bigint [not null]
+  is_read boolean [not null]
+  read_at timestamp
+  type notification_type [not null]
+}
+
+Table outbox_event {
+  event_id bigint [pk, increment, not null]
+  aggregate_id bigint [not null]
+  aggregate_type varchar(50) [not null]
+  event_type varchar(50) [not null]
+  occurred_at timestamp [not null]
+  payload_json json [not null]
+  published_at timestamp
+  status varchar(20) [not null]
+}
+
+Table region {
+  id integer [pk, increment, not null]
+  adm_cd varchar(8) [not null]
+  adm_cd2 varchar(10) [not null]
+  adm_nm varchar(50) [not null]
+  dongnm varchar(20) [not null]
+  geom geography [not null]
+  sgg varchar(5) [not null]
+  sggnm varchar(20) [not null]
+  sido varchar(2) [not null]
+  sidonm varchar(20) [not null]
+}
+
+Table review {
+  review_id bigint [pk, increment, not null]
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+  comment text
+  is_seller boolean [not null]
+  listing_id bigint [not null]
+  rating integer [not null]
+  target_id bigint [not null]
+  writer_id bigint [not null]
+  trade_id bigint [not null]
+}
+
+Table trade {
+  trade_id bigint [pk, increment, not null]
+  buyer_id bigint [not null]
+  completed_at timestamp
+  created_at timestamp [not null]
+  listing_id bigint [not null]
+  price bigint [not null]
+  seller_id bigint [not null]
+  status trade_status [not null]
+  transaction_type transaction_type [not null]
+  updated_at timestamp [not null]
+}
+
+Ref: member_interest.member_id > member.member_id
+Ref: member_region.member_id > member.member_id
+Ref: listing_image.listing_id > listing.listing_id

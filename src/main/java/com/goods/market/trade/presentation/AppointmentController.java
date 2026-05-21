@@ -3,8 +3,10 @@ package com.goods.market.trade.presentation;
 import com.goods.market.common.auth.AuthPrincipal;
 import com.goods.market.common.api.ApiResponse;
 import com.goods.market.trade.application.AppointmentCommandService;
-import com.goods.market.trade.application.dto.AppointmentResponse;
-import com.goods.market.trade.application.dto.TradePromptResponse;
+import com.goods.market.trade.application.dto.AppointmentDto;
+import com.goods.market.trade.application.dto.TradePromptDto;
+import com.goods.market.trade.presentation.dto.response.AppointmentResponse;
+import com.goods.market.trade.presentation.dto.response.TradePromptResponse;
 import com.goods.market.trade.presentation.dto.request.AppointmentCreateRequest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -34,13 +36,16 @@ public class AppointmentController {
             HttpServletRequest httpRequest,
             @Valid @RequestBody AppointmentCreateRequest appointmentCreateRequest
     ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                appointmentCommandService.schedule(
+        AppointmentDto appointment = appointmentCommandService.schedule(
                 principal.memberId(),
                 chatRoomId,
                 appointmentCreateRequest.meetAt(),
                 appointmentCreateRequest.reminderMinutes()
-        ), httpRequest.getRequestURI()));
+        );
+        return ResponseEntity.ok(ApiResponse.success(
+                AppointmentResponse.from(appointment),
+                httpRequest.getRequestURI()
+        ));
     }
 
     @DeleteMapping("/appointments/{appointment_id}")
@@ -54,8 +59,8 @@ public class AppointmentController {
 
     @GetMapping("/appointments/trade-prompt")
     public ResponseEntity<?> getTradePrompt(@AuthenticationPrincipal AuthPrincipal principal) {
-        Optional<TradePromptResponse> prompt = appointmentCommandService.getTradePrompt(principal.memberId());
-        return prompt.<ResponseEntity<?>>map(ResponseEntity::ok)
+        Optional<TradePromptDto> prompt = appointmentCommandService.getTradePrompt(principal.memberId());
+        return prompt.<ResponseEntity<?>>map(dto -> ResponseEntity.ok(TradePromptResponse.from(dto)))
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
 

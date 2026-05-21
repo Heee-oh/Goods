@@ -1,8 +1,8 @@
 package com.goods.market.member.application;
 
-import com.goods.market.member.application.dto.InterestResponse;
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.MemberResponse;
+import com.goods.market.member.application.dto.InterestDto;
+import com.goods.market.member.application.dto.MemberDto;
+import com.goods.market.member.application.dto.MemberRegionDto;
 import com.goods.market.member.infrastructure.Interest.InterestJpaRepository;
 import com.goods.market.member.infrastructure.Interest.InterestRepositoryCustom;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
@@ -29,17 +29,17 @@ public class MemberQueryServiceImpl implements MemberQueryService {
     private final InterestJpaRepository interestJpaRepository;
 
     @Override
-    public MemberResponse getMe(Long memberId) {
+    public MemberDto getMe(Long memberId) {
         return memberJpaRepository.findMember(memberId);
     }
 
     @Override
-    public List<MemberRegionResponse> getMyRegions(Long memberId) {
+    public List<MemberRegionDto> getMyRegions(Long memberId) {
         return memberRegionJpaRepository.findAllByMember(memberId);
     }
 
     @Override
-    public Slice<InterestResponse> getMyInterests(Long memberId, Long lastInterestId, int size) {
+    public Slice<InterestDto> getMyInterests(Long memberId, Long lastInterestId, int size) {
         PageRequest pageRequest = PageRequest.of(0, size);
         return interestJpaRepository.findAllByMemberId(memberId, lastInterestId, pageRequest);
     }

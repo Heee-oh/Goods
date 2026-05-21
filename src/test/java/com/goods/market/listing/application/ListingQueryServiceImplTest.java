@@ -1,7 +1,7 @@
 package com.goods.market.listing.application;
 
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
-import com.goods.market.listing.application.dto.ListingResponse;
+import com.goods.market.listing.application.dto.ListingItemDto;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
@@ -58,7 +58,7 @@ class ListingQueryServiceImplTest {
 
         when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
                 .thenReturn(Optional.of(new MemberRegion(regionId, true, lat, lng)));
-        Slice<ListingResponse> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
+        Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingJpaRepository.findListings(eq(memberId), eq(regionId), eq(lat), eq(lng), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class)))
                 .thenReturn(slice);
 
@@ -75,7 +75,7 @@ class ListingQueryServiceImplTest {
 
         when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
                 .thenReturn(Optional.of(new MemberRegion(regionId, true)));
-        Slice<ListingResponse> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
+        Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingJpaRepository.findListings(eq(memberId), eq(regionId), isNull(), isNull(), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class)))
                 .thenReturn(slice);
 

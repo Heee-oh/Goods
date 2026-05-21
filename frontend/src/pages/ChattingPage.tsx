@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, apiRequest } from "../lib/api";
 import { clearSession } from "../lib/auth";
@@ -20,6 +20,13 @@ const chatFilters = [
   "\uBAA8\uC784",
   "\uC54C\uBC14"
 ] as const;
+const CHAT_ROOM_PREVIEW_EVENT = "goods:chat-room-preview-updated";
+
+type ChatRoomPreviewUpdateEventDetail = {
+  chatRoomId?: number | string;
+  content?: string;
+  createdAt?: string;
+};
 
 function formatRelativeTime(value: string) {
   const createdAt = new Date(value);
@@ -81,12 +88,13 @@ function ListingThumbnail({
 
 export function ChatListPage() {
   const navigate = useNavigate();
-  const { registerRooms, unreadCountByRoom, markRoomRead } = useChatNotifications();
+  const { registerRooms, roomsVersion, unreadCountByRoom, markRoomRead } = useChatNotifications();
   const [filter, setFilter] = useState<(typeof chatFilters)[number]>("\uC804\uCCB4");
   const [rooms, setRooms] = useState<ChatRoomSummary[]>([]);
   const [expandedListingIds, setExpandedListingIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const hasSeenRoomsVersionRef = useRef(false);
 
   const toggleListingGroup = useCallback((listingId: string) => {
     setExpandedListingIds((current) => {
@@ -101,44 +109,86 @@ export function ChatListPage() {
     });
   }, []);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError("");
+  const loadRooms = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const response = await apiRequest<RawChatRoomSummary[]>("/api/chat-rooms");
-        const nextRooms = response
-          .map(normalizeChatRoomSummary)
-          .filter((room): room is ChatRoomSummary => room !== null);
+      const response = await apiRequest<RawChatRoomSummary[]>("/api/chat-rooms");
+      const nextRooms = response
+        .map(normalizeChatRoomSummary)
+        .filter((room): room is ChatRoomSummary => room !== null);
 
-        setRooms(nextRooms);
-        registerRooms(
-          nextRooms.map((room) => ({
-            chatRoomId: room.chatRoomId,
-            partnerNickname: room.partnerNickname
-          }))
-        );
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401) {
-          clearSession();
-          navigate("/welcome", { replace: true });
-          return;
-        }
-
-        setError(err instanceof Error ? err.message : "Failed to load chat rooms.");
-      } finally {
-        setLoading(false);
+      setRooms(nextRooms);
+      registerRooms(
+        nextRooms.map((room) => ({
+          chatRoomId: room.chatRoomId,
+          partnerNickname: room.partnerNickname
+        }))
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearSession();
+        navigate("/welcome", { replace: true });
+        return;
       }
+
+      setError(err instanceof Error ? err.message : "Failed to load chat rooms.");
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, registerRooms]);
+
+  useEffect(() => {
+    void loadRooms();
+  }, [loadRooms]);
+
+  useEffect(() => {
+    if (roomsVersion === 0) {
+      return;
+    }
+
+    if (!hasSeenRoomsVersionRef.current) {
+      hasSeenRoomsVersionRef.current = true;
+      return;
+    }
+
+    void loadRooms();
+  }, [loadRooms, roomsVersion]);
+
+  useEffect(() => {
+    const handlePreviewUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<ChatRoomPreviewUpdateEventDetail>;
+      const chatRoomId = customEvent.detail?.chatRoomId;
+      const content = customEvent.detail?.content;
+      const createdAt = customEvent.detail?.createdAt;
+
+      if (chatRoomId == null || !content) {
+        return;
+      }
+
+      const normalizedChatRoomId = String(chatRoomId);
+      setRooms((current) =>
+        current
+          .map((room) =>
+            room.chatRoomId === normalizedChatRoomId
+              ? {
+                  ...room,
+                  lastMessage: content,
+                  lastMessageAt: createdAt ?? new Date().toISOString()
+                }
+              : room
+          )
+          .sort((left, right) => new Date(right.lastMessageAt).getTime() - new Date(left.lastMessageAt).getTime())
+      );
     };
 
-    void load();
-    window.addEventListener("focus", load);
+    window.addEventListener(CHAT_ROOM_PREVIEW_EVENT, handlePreviewUpdate as EventListener);
 
     return () => {
-      window.removeEventListener("focus", load);
+      window.removeEventListener(CHAT_ROOM_PREVIEW_EVENT, handlePreviewUpdate as EventListener);
     };
-  }, [navigate, registerRooms]);
+  }, []);
 
   const visibleEntries = useMemo(() => {
     const grouped = groupChatRooms(rooms);

@@ -3,9 +3,10 @@ package com.goods.market.listing.presentation;
 import com.goods.market.listing.application.ListingCommandService;
 import com.goods.market.listing.application.ListingImageStorageService;
 import com.goods.market.listing.application.ListingQueryService;
-import com.goods.market.listing.application.dto.ListingDetailResponse;
-import com.goods.market.listing.application.dto.ListingImageResponse;
-import com.goods.market.listing.application.dto.ListingResponse;
+import com.goods.market.listing.application.dto.ListingDetailDto;
+import com.goods.market.listing.application.dto.ListingImageDto;
+import com.goods.market.listing.application.dto.ListingItemDto;
+import com.goods.market.listing.domain.Status;
 import com.goods.market.listing.exception.ListingNotFoundException;
 import com.goods.market.common.auth.AuthPrincipal;
 import com.goods.market.common.presentation.GlobalExceptionHandler;
@@ -116,7 +117,7 @@ class ListingControllerTest {
 
     @Test
     void getListingsUsesRequestedCursor() throws Exception {
-        Slice<ListingResponse> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
+        Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingQueryService.getListings(1L, 11000, 88L, null, null)).thenReturn(slice);
 
         mockMvc.perform(get("/api/listings")
@@ -130,7 +131,7 @@ class ListingControllerTest {
 
     @Test
     void getListingsUsesDefaultCursorWhenMissingLastListingId() throws Exception {
-        Slice<ListingResponse> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
+        Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingQueryService.getListings(1L, 11000, Long.MAX_VALUE, null, null)).thenReturn(slice);
 
         mockMvc.perform(get("/api/listings")
@@ -160,14 +161,14 @@ class ListingControllerTest {
 
     @Test
     void getListingReturnsDetail() throws Exception {
-        ListingDetailResponse response = new ListingDetailResponse(
+        ListingDetailDto response = new ListingDetailDto(
                 10L,
                 1L,
                 null,
                 null,
+                "seller",
+                null,
                 365,
-                null,
-                null,
                 "Macbook",
                 "almost new",
                 1L,
@@ -176,15 +177,13 @@ class ListingControllerTest {
                 false,
                 "역삼동",
                 0L,
-                false,
                 "PUBLISHED",
                 11000,
                 new BigDecimal("37.5665"),
                 new BigDecimal("126.9780"),
                 null,
                 0L,
-                List.of(new ListingImageResponse(1L, "https://img/1.png", 0)),
-                Instant.now(),
+                List.of(new ListingImageDto(1L, "https://img/1.png", 0)),
                 Instant.now()
         );
         when(listingQueryService.getListing(10L, null, null)).thenReturn(response);
@@ -244,7 +243,9 @@ class ListingControllerTest {
     }
 
     @Test
-    void markSoldOutReturnsNoContent() throws Exception {
+    void markSoldOutReturnsTradeId() throws Exception {
+        when(listingCommandService.markSoldOut(1L, 10L, 200L)).thenReturn(300L);
+
         mockMvc.perform(post("/api/listings/{listingId}/sold-out", 10L)
                         .with(authenticated(1L))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -253,7 +254,8 @@ class ListingControllerTest {
                                   "buyerId": 200
                                 }
                                 """))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tradeId").value(300L));
 
         verify(listingCommandService).markSoldOut(1L, 10L, 200L);
     }

@@ -43,6 +43,7 @@ postgres_data/
 /build
 
 frontend/node_modules/
+Frontend-next/node_modules/
 
 /uploads/
 

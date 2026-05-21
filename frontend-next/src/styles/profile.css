@@ -1,0 +1,290 @@
+.page-my-profile {
+  padding: 18px 14px 120px;
+  background: #f5f5f5;
+}
+
+.my-profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 2px 18px;
+}
+
+.my-profile-header h1 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.03em;
+}
+
+.my-profile-settings {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+}
+
+.my-card {
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.my-profile-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.my-profile-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #eef1f5, #e4e8ef);
+  flex: none;
+}
+
+.my-profile-avatar.real-image {
+  object-fit: cover;
+}
+
+.my-profile-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.my-profile-copy strong {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.my-score-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: var(--brand-deep);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.my-chevron {
+  color: #9aa1ab;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.my-banner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-banner-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.my-banner-copy strong {
+  font-size: 16px;
+}
+
+.my-banner-copy span {
+  color: #6f7783;
+  font-size: 14px;
+}
+
+.my-banner-close {
+  color: #a0a7b1;
+  font-size: 24px;
+}
+
+.my-section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.my-section-title-row h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.my-quick-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 8px 0;
+}
+
+.my-quick-item {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-right: 1px solid #f0f1f4;
+  font-size: 15px;
+}
+
+.my-quick-item:last-child {
+  border-right: 0;
+}
+
+.my-quick-icon {
+  font-size: 24px;
+  color: #5d6470;
+}
+
+.my-trade-list {
+  display: grid;
+}
+
+.my-trade-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  text-align: left;
+  font-size: 17px;
+}
+
+
+.profile-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 30px;
+}
+
+.profile-avatar {
+  width: 62px;
+  height: 62px;
+  font-size: 24px;
+}
+
+.profile-actions {
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
+  width: 100%;
+  padding: 16px;
+  border-radius: 18px;
+  font-weight: 800;
+}
+
+.secondary-button {
+  background: white;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  color: var(--brand-deep);
+}
+
+.compact {
+  padding: 13px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stat-card {
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 24px;
+}
+
+.stat-card span {
+  color: var(--muted);
+}
+
+.stat-card strong {
+  font-size: 30px;
+}
+
+.menu-panel {
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-panel button {
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  border-radius: 22px;
+  text-align: left;
+}
+
+.menu-panel button::after {
+  content: ">";
+  color: var(--muted);
+}
+
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 8px 12px 10px;
+  border-radius: 0;
+  background: #fff;
+  border-top: 1px solid #ededed;
+  box-shadow: none;
+  gap: 0;
+}
+
+.tab-item {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 4px 2px;
+  border-radius: 0;
+  color: #8b8b8b;
+  font-size: 11px;
+  position: relative;
+}
+
+.tab-item svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.tab-item.active {
+  background: transparent;
+  color: #111;
+  font-weight: 700;
+}
+
+.tab-icon-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.tab-badge {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  border: 2px solid #fff;
+}

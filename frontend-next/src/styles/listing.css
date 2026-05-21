@@ -1,0 +1,258 @@
+.page-listing {
+  padding-bottom: 120px;
+}
+
+.listing-list {
+  display: grid;
+  gap: 0;
+  background: #fff;
+}
+
+.listing-list-loading {
+  min-height: 260px;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.listing-list-loading-initial {
+  min-height: 360px;
+  flex: 1;
+  width: 100%;
+}
+
+.listing-list-loading-more {
+  min-height: 72px;
+  padding: 12px 0 4px;
+}
+
+.goods-spinner {
+  width: 28px;
+  height: 28px;
+  color: var(--brand);
+  animation: spin 0.9s linear infinite;
+}
+
+.page-listing .listing-list.listing-list-loading,
+.listing-mobile-shell .listing-list.listing-list-loading {
+  display: flex;
+  width: 100%;
+  min-height: 260px;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-listing .listing-list.listing-list-loading-initial,
+.listing-mobile-shell .listing-list.listing-list-loading-initial {
+  min-height: 360px;
+  flex: 1;
+}
+
+.page-listing .listing-list.listing-list-loading-more,
+.listing-mobile-shell .listing-list.listing-list-loading-more {
+  min-height: 72px;
+  padding: 12px 0 4px;
+}
+
+.listing-load-trigger {
+  height: 1px;
+}
+
+.listing-desktop-shell {
+  display: none;
+}
+
+.listing-mobile-shell {
+  display: block;
+}
+
+.listing-card,
+.chat-room,
+.profile-card,
+.stat-card,
+.menu-panel button,
+.chat-thread,
+.chat-room-list {
+  background: var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+.listing-card {
+  gap: 16px;
+  padding: 14px 2px;
+  border-radius: 0;
+  align-items: flex-start;
+  border: 0;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.listing-thumb {
+  width: 118px;
+  height: 118px;
+  border-radius: 10px;
+  flex: none;
+}
+
+.listing-thumb.real-image {
+  object-fit: cover;
+  background: #f4f4f4;
+}
+
+.listing-thumb.sunset {
+  background: linear-gradient(135deg, #8a441c, #efe1c8);
+}
+
+.listing-thumb.olive {
+  background: linear-gradient(135deg, #dcdcd0, #7c8d4c);
+}
+
+.listing-thumb.midnight {
+  background: linear-gradient(135deg, #d9d9d9, #464646);
+}
+
+.listing-thumb.sand {
+  background: linear-gradient(135deg, #ece7df, #bcb3a1);
+}
+
+.listing-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.listing-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.listing-copy h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.listing-copy strong {
+  display: block;
+  margin-top: 6px;
+  margin-bottom: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.listing-price-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.listing-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #eef1f4;
+  color: #333942;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.listing-sub {
+  font-size: 14px;
+}
+
+.listing-copy p,
+.listing-meta,
+.chat-room-copy p,
+.chat-room-copy small,
+.profile-card p {
+  color: var(--muted);
+}
+
+.listing-meta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: 13px;
+  margin-top: 18px;
+  color: #b4b4b4;
+}
+
+.more-button {
+  color: #8d8d8d;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+}
+
+.floating-button,
+.primary-button {
+  background: linear-gradient(180deg, var(--brand), var(--brand-deep));
+  color: white;
+  box-shadow: 0 18px 28px rgba(37, 99, 235, 0.22);
+}
+
+.floating-button {
+  position: fixed;
+  right: max(20px, calc((100vw - min(980px, 100vw)) / 2 + 20px));
+  bottom: 40px;
+  padding: 15px 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #10243a, #091423);
+  box-shadow: 0 18px 28px rgba(16, 36, 58, 0.22);
+  font-weight: 800;
+  font-size: 18px;
+  z-index: 20;
+}
+
+
+.page-listing .top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: #fff;
+  padding-top: 4px;
+  padding-bottom: 10px;
+}
+
+.listing-dim {
+  position: absolute;
+  inset: 58px 0 0;
+  background: rgba(0, 0, 0, 0.42);
+  z-index: 5;
+}
+
+.location-menu {
+  position: absolute;
+  top: 66px;
+  left: 16px;
+  width: 150px;
+  padding: 10px 0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+  z-index: 6;
+}
+
+.location-menu-item {
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 15px;
+}
+
+.location-menu-item.active {
+  color: #111;
+  font-weight: 700;
+}
+
+.location-menu-item.muted {
+  color: #666;
+}

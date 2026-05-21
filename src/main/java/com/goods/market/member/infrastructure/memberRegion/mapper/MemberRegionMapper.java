@@ -1,6 +1,4 @@
 package com.goods.market.member.infrastructure.memberRegion.mapper;
-
-import com.goods.market.listing.application.dto.ListingResponse;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

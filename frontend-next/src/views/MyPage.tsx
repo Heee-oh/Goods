@@ -20,14 +20,14 @@ type RawMemberResponse = {
 };
 
 function formatSmileScore(value: number | null | undefined) {
-  const temp = Number(value ?? 100);
-  return `${(temp / 10).toFixed(1)}점`;
+  const score = Number(value ?? 100);
+  return `${(score / 10).toFixed(1)}점`;
 }
 
 export function MyPage() {
   const navigate = useNavigate();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [nickname, setNickname] = useState("당근 사용자");
+  const [nickname, setNickname] = useState("굿즈 사용자");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [smileScore, setSmileScore] = useState<number>(100);
   const [error, setError] = useState("");
@@ -37,7 +37,7 @@ export function MyPage() {
       try {
         setError("");
         const response = await apiRequest<RawMemberResponse>("/api/members/me");
-        setNickname(response.nickname?.trim() || "당근 사용자");
+        setNickname(response.nickname?.trim() || "굿즈 사용자");
         setProfileImage(response.profile_image ?? response.ProfileImage ?? null);
         setSmileScore(response.smile_score ?? response.smileScore ?? 100);
       } catch (err) {
@@ -62,12 +62,12 @@ export function MyPage() {
   };
 
   return (
-    <div className="page page-mypage page-my-daangn">
-      <header className="my-daangn-header">
+    <div className="page page-mypage page-my-profile">
+      <header className="my-profile-header">
         <h1>마이페이지</h1>
         <button
           type="button"
-          className="my-daangn-settings"
+          className="my-profile-settings"
           aria-label="설정"
           onClick={() => setSettingsOpen((open) => !open)}
         >
@@ -90,7 +90,7 @@ export function MyPage() {
           {profileImage ? <img className="my-profile-avatar real-image" src={profileImage} alt={nickname} /> : <div className="my-profile-avatar" />}
           <div className="my-profile-copy">
             <strong>{nickname}</strong>
-            <div className="my-temp-badge">{formattedSmileScore}</div>
+            <div className="my-score-badge">{formattedSmileScore}</div>
           </div>
           <span className="my-chevron">›</span>
         </div>

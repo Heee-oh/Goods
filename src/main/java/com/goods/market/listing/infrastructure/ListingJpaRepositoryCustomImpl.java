@@ -1,7 +1,7 @@
 package com.goods.market.listing.infrastructure;
 
-import com.goods.market.listing.application.dto.ListingResponse;
-import com.goods.market.listing.application.dto.QListingResponse;
+import com.goods.market.listing.application.dto.ListingItemDto;
+import com.goods.market.listing.application.dto.QListingItemDto;
 import com.goods.market.listing.domain.QListing;
 import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.listing.domain.Status;
@@ -49,7 +49,7 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
      */
     @Override
     @Transactional(readOnly = true)
-    public Slice<ListingResponse> findListings(
+    public Slice<ListingItemDto> findListings(
             Long memberId,
             Integer regionId,
             BigDecimal originLat,
@@ -80,8 +80,8 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
                 .when(resolvedTransactionType.eq("sell")).then(listing.price.priceAmount.coalesce(0L))
                 .otherwise(0L);
 
-        List<ListingResponse> fetch
-                = queryFactory.select(new QListingResponse(
+        List<ListingItemDto> fetch
+                = queryFactory.select(new QListingItemDto(
                         listing.id,
                         listing.sellerId,
                         listing.title,

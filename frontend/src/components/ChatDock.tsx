@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ApiError, apiRequest } from "../lib/api";
@@ -25,8 +25,21 @@ type OpenRoomState = {
   size: { width: number; height: number };
 };
 
+type OpenChatRoomEventDetail = {
+  chatRoomId?: number | string;
+  partnerNickname?: string | null;
+};
+
+type ChatRoomPreviewUpdateEventDetail = {
+  chatRoomId?: number | string;
+  content?: string;
+  createdAt?: string;
+};
+
 const DEFAULT_FLOAT_SIZE = { width: 380, height: 540 };
 const CHAT_ROOMS_CACHE_PREFIX = "goods:chat-rooms";
+const CHAT_ROOM_PREVIEW_EVENT = "goods:chat-room-preview-updated";
+const OPEN_CHAT_ROOM_EVENT = "goods:open-chat-room";
 
 function formatRelativeTime(value: string) {
   const createdAt = new Date(value);
@@ -108,6 +121,10 @@ export function ChatDock() {
   const [openRooms, setOpenRooms] = useState<OpenRoomState[]>([]);
   const [expandedListingIds, setExpandedListingIds] = useState<Set<string>>(() => new Set());
   const zIndexRef = useRef(20);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const previousRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const animationFrameRef = useRef<number | null>(null);
+  const animationTimerRef = useRef<number | null>(null);
 
   const loadRooms = useCallback(async (options: { useCache?: boolean } = {}) => {
     const useCache = options.useCache ?? true;
@@ -173,18 +190,6 @@ export function ChatDock() {
     void loadRooms({ useCache: false });
   }, [loadRooms, roomsVersion]);
 
-  useEffect(() => {
-    const reloadOnFocus = () => {
-      void loadRooms({ useCache: false });
-    };
-
-    window.addEventListener("focus", reloadOnFocus);
-
-    return () => {
-      window.removeEventListener("focus", reloadOnFocus);
-    };
-  }, [loadRooms]);
-
   const openRoom = useCallback(
     (room: ChatRoomSummary) => {
       markRoomRead(room.chatRoomId);
@@ -220,6 +225,150 @@ export function ChatDock() {
     },
     [markRoomRead]
   );
+
+  useEffect(() => {
+    const handlePreviewUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<ChatRoomPreviewUpdateEventDetail>;
+      const chatRoomId = customEvent.detail?.chatRoomId;
+      const content = customEvent.detail?.content;
+      const createdAt = customEvent.detail?.createdAt;
+
+      if (chatRoomId == null || !content) {
+        return;
+      }
+
+      const normalizedChatRoomId = String(chatRoomId);
+      setRooms((current) =>
+        current
+          .map((room) =>
+            room.chatRoomId === normalizedChatRoomId
+              ? {
+                  ...room,
+                  lastMessage: content,
+                  lastMessageAt: createdAt ?? new Date().toISOString()
+                }
+              : room
+          )
+          .sort((left, right) => new Date(right.lastMessageAt).getTime() - new Date(left.lastMessageAt).getTime())
+      );
+    };
+
+    window.addEventListener(CHAT_ROOM_PREVIEW_EVENT, handlePreviewUpdate as EventListener);
+    return () => window.removeEventListener(CHAT_ROOM_PREVIEW_EVENT, handlePreviewUpdate as EventListener);
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = listRef.current;
+    if (!root) {
+      return;
+    }
+
+    const elements = Array.from(root.querySelectorAll<HTMLElement>("[data-chat-dock-key]"));
+    const currentRects = new Map<string, DOMRect>();
+
+    elements.forEach((element) => {
+      const key = element.dataset.chatDockKey;
+      if (!key) {
+        return;
+      }
+
+      currentRects.set(key, element.getBoundingClientRect());
+    });
+
+    const previousRects = previousRectsRef.current;
+    if (previousRects.size > 0) {
+      elements.forEach((element) => {
+        const key = element.dataset.chatDockKey;
+        if (!key) {
+          return;
+        }
+
+        const previousRect = previousRects.get(key);
+        const currentRect = currentRects.get(key);
+        if (!previousRect || !currentRect) {
+          return;
+        }
+
+        const deltaX = previousRect.left - currentRect.left;
+        const deltaY = previousRect.top - currentRect.top;
+        if (!deltaX && !deltaY) {
+          return;
+        }
+
+        element.style.transition = "transform 0s";
+        element.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        element.style.willChange = "transform";
+      });
+
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+      }
+
+      animationFrameRef.current = window.requestAnimationFrame(() => {
+        elements.forEach((element) => {
+          if (element.style.transform) {
+            element.style.transition = "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)";
+            element.style.transform = "";
+          }
+        });
+
+        if (animationTimerRef.current !== null) {
+          window.clearTimeout(animationTimerRef.current);
+        }
+
+        animationTimerRef.current = window.setTimeout(() => {
+          elements.forEach((element) => {
+            element.style.transition = "";
+            element.style.willChange = "";
+          });
+          animationTimerRef.current = null;
+        }, 240);
+      });
+    }
+
+    previousRectsRef.current = currentRects;
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        window.cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+
+      if (animationTimerRef.current !== null) {
+        window.clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+    };
+  }, [rooms, expandedListingIds]);
+
+  useEffect(() => {
+    const handleOpenChatRoom = (event: Event) => {
+      const customEvent = event as CustomEvent<OpenChatRoomEventDetail>;
+      const chatRoomId = customEvent.detail?.chatRoomId;
+      if (chatRoomId == null) {
+        return;
+      }
+
+      openRoom({
+        chatRoomId: String(chatRoomId),
+        listingId: null,
+        listingTitle: null,
+        listingPrice: null,
+        listingStatus: "PUBLISHED",
+        listingTransactionType: "sell",
+        listingFirstImage: null,
+        sellerView: false,
+        partnerNickname: customEvent.detail.partnerNickname ?? "상대방",
+        partnerProfileImage: null,
+        regionName: null,
+        lastMessage: "",
+        lastMessageAt: new Date().toISOString()
+      });
+    };
+
+    window.addEventListener(OPEN_CHAT_ROOM_EVENT, handleOpenChatRoom as EventListener);
+    return () => window.removeEventListener(OPEN_CHAT_ROOM_EVENT, handleOpenChatRoom as EventListener);
+  }, [openRoom]);
 
   const activateRoom = useCallback((chatRoomId: string) => {
     zIndexRef.current += 1;
@@ -289,7 +438,7 @@ export function ChatDock() {
         {loading ? <p className="region-status">{"\uBD88\uB7EC\uC624\uB294 \uC911.."}</p> : null}
         {error ? <p className="auth-error">{error}</p> : null}
 
-        <div className="chat-dock-list">
+        <div className="chat-dock-list" ref={listRef}>
           {groupedEntries.map((entry) => {
             if (entry.kind === "group") {
               const isExpanded = expandedListingIds.has(entry.listingId);
@@ -297,7 +446,11 @@ export function ChatDock() {
               const unreadCount = entry.rooms.reduce((sum, room) => sum + (unreadCountByRoom[room.chatRoomId] ?? 0), 0);
 
               return (
-                <div key={`listing-${entry.listingId}`} className="chat-dock-group">
+                <div
+                  key={`listing-${entry.listingId}`}
+                  data-chat-dock-key={`group-${entry.listingId}`}
+                  className="chat-dock-group"
+                >
                   <button
                     type="button"
                     className={isActive ? "chat-dock-group-head active" : "chat-dock-group-head"}
@@ -357,13 +510,14 @@ export function ChatDock() {
             }
 
             const room = entry.room;
-            return (
-              <button
-                key={room.chatRoomId}
-                type="button"
-                className={openRoomIds.has(room.chatRoomId) ? "chat-dock-item active" : "chat-dock-item"}
-                onClick={() => openRoom(room)}
-              >
+              return (
+                <button
+                  key={room.chatRoomId}
+                  type="button"
+                  data-chat-dock-key={`room-${room.chatRoomId}`}
+                  className={openRoomIds.has(room.chatRoomId) ? "chat-dock-item active" : "chat-dock-item"}
+                  onClick={() => openRoom(room)}
+                >
                 <ChatThumbnail profileImage={room.partnerProfileImage} partnerNickname={room.partnerNickname} />
                 <div className="chat-dock-copy">
                   <div className="chat-dock-title-row">

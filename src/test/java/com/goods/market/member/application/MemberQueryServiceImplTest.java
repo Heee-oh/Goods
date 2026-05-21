@@ -1,8 +1,8 @@
 package com.goods.market.member.application;
 
-import com.goods.market.member.application.dto.InterestResponse;
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.MemberResponse;
+import com.goods.market.member.application.dto.InterestDto;
+import com.goods.market.member.application.dto.MemberDto;
+import com.goods.market.member.application.dto.MemberRegionDto;
 import com.goods.market.member.infrastructure.Interest.InterestJpaRepository;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import com.goods.market.member.infrastructure.memberRegion.MemberRegionJpaRepository;
@@ -45,11 +45,11 @@ class MemberQueryServiceImplTest {
     void getMeDelegatesToRepository() {
         // given
         Long memberId = 1L;
-        MemberResponse expected = new MemberResponse("nick", "img.png", 365);
+        MemberDto expected = new MemberDto("nick", "img.png", 365);
         when(memberRepository.findMember(memberId)).thenReturn(expected);
 
         // when
-        MemberResponse actual = memberQueryService.getMe(memberId);
+        MemberDto actual = memberQueryService.getMe(memberId);
 
         // then
         assertThat(actual).isEqualTo(expected);
@@ -61,13 +61,13 @@ class MemberQueryServiceImplTest {
     void getMyRegionsDelegatesToRepository() {
         // given
         Long memberId = 1L;
-        List<MemberRegionResponse> expected = List.of(
-                new MemberRegionResponse(1L, 11000, Instant.now(), true, "동네이름", null, null)
+        List<MemberRegionDto> expected = List.of(
+                new MemberRegionDto(1L, 11000, Instant.now(), true, "동네이름", null, null)
         );
         when(memberRegionRepository.findAllByMember(memberId)).thenReturn(expected);
 
         // when
-        List<MemberRegionResponse> actual = memberQueryService.getMyRegions(memberId);
+        List<MemberRegionDto> actual = memberQueryService.getMyRegions(memberId);
 
         // then
         assertThat(actual).hasSize(1);
@@ -82,13 +82,13 @@ class MemberQueryServiceImplTest {
         Long memberId = 1L;
         Long lastInterestId = 50L;
         int size = 7;
-        Slice<InterestResponse> expected = new SliceImpl<>(List.of(new InterestResponse(10L, 99L)));
+        Slice<InterestDto> expected = new SliceImpl<>(List.of(new InterestDto(10L, 99L)));
 
         when(interestRepository.findAllByMemberId(eq(memberId), eq(lastInterestId), any(Pageable.class)))
                 .thenReturn(expected);
 
         // when
-        Slice<InterestResponse> actual = memberQueryService.getMyInterests(memberId, lastInterestId, size);
+        Slice<InterestDto> actual = memberQueryService.getMyInterests(memberId, lastInterestId, size);
 
         // then
         assertThat(actual).isEqualTo(expected);

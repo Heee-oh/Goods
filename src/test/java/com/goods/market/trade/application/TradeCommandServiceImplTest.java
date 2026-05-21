@@ -2,9 +2,9 @@ package com.goods.market.trade.application;
 
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeCompletedEvent;
-import com.goods.market.listing.domain.Listing;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.trade.domain.Price;
 import com.goods.market.trade.domain.Trade;
+import com.goods.market.trade.domain.TransactionType;
 import com.goods.market.trade.infrastructure.TradeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,9 +26,6 @@ import static org.mockito.Mockito.when;
 class TradeCommandServiceImplTest {
 
     @Mock
-    private ListingJpaRepository listingJpaRepository;
-
-    @Mock
     private TradeRepository tradeRepository;
 
     @Mock
@@ -38,29 +35,8 @@ class TradeCommandServiceImplTest {
     private TradeCommandServiceImpl tradeCommandService;
 
     @Test
-    void completeFromListingLoadsListingAndPublishesExchangeEvent() {
-        Listing listing = Listing.draftPrice(3000L, false);
-        ReflectionTestUtils.setField(listing, "id", 10L);
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
-        when(tradeRepository.findByListingId(10L)).thenReturn(Optional.empty());
-        when(tradeRepository.save(any(Trade.class))).thenAnswer(invocation -> {
-            Trade trade = invocation.getArgument(0);
-            ReflectionTestUtils.setField(trade, "id", 99L);
-            return trade;
-        });
-
-        Long tradeId = tradeCommandService.completeFromListing(10L, 1L, 2L);
-
-        assertThat(tradeId).isEqualTo(99L);
-        ArgumentCaptor<TradeCompletedEvent> eventCaptor = ArgumentCaptor.forClass(TradeCompletedEvent.class);
-        verify(domainEventPublisher).publish(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().tradeId()).isEqualTo(99L);
-        assertThat(eventCaptor.getValue().listingId()).isEqualTo(10L);
-        assertThat(eventCaptor.getValue().price()).isEqualTo(3000L);
-    }
-
-    @Test
     void completeCreatesTradeAndPublishesExchangeEvent() {
+        Price price = new Price(3000L, TransactionType.SELL);
         when(tradeRepository.findByListingId(10L)).thenReturn(Optional.empty());
         when(tradeRepository.save(any(Trade.class))).thenAnswer(invocation -> {
             Trade trade = invocation.getArgument(0);
@@ -68,22 +44,25 @@ class TradeCommandServiceImplTest {
             return trade;
         });
 
-        Long tradeId = tradeCommandService.complete(10L, 1L, 2L, 3000L);
+        Long tradeId = tradeCommandService.complete(10L, 1L, 2L, price);
 
         assertThat(tradeId).isEqualTo(99L);
         ArgumentCaptor<TradeCompletedEvent> eventCaptor = ArgumentCaptor.forClass(TradeCompletedEvent.class);
         verify(domainEventPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue().tradeId()).isEqualTo(99L);
         assertThat(eventCaptor.getValue().listingId()).isEqualTo(10L);
+        assertThat(eventCaptor.getValue().price().getPriceAmount()).isEqualTo(3000L);
+        assertThat(eventCaptor.getValue().price().resolveTransactionType()).isEqualTo(TransactionType.SELL);
     }
 
     @Test
     void completeReturnsExistingTradeWithoutPublishingDuplicateEvent() {
-        Trade trade = Trade.complete(10L, 1L, 2L, 3000L);
+        Price price = new Price(3000L, TransactionType.SELL);
+        Trade trade = Trade.complete(10L, 1L, 2L, price);
         ReflectionTestUtils.setField(trade, "id", 99L);
         when(tradeRepository.findByListingId(10L)).thenReturn(Optional.of(trade));
 
-        Long tradeId = tradeCommandService.complete(10L, 1L, 2L, 3000L);
+        Long tradeId = tradeCommandService.complete(10L, 1L, 2L, price);
 
         assertThat(tradeId).isEqualTo(99L);
         verify(tradeRepository, never()).save(any());

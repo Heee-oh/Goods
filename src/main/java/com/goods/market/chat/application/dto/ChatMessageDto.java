@@ -1,0 +1,15 @@
+package com.goods.market.chat.application.dto;
+
+import com.goods.market.chat.domain.MessageType;
+
+import java.time.Instant;
+
+public record ChatMessageDto(
+        Long chatRoomId,
+        Long messageId,
+        Long senderId,
+        MessageType type,
+        String content,
+        Instant createdAt
+) {
+}

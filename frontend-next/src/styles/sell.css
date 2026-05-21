@@ -1,0 +1,436 @@
+.sell-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(10, 17, 40, 0.06);
+}
+
+.sell-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+
+.sell-modal-shell {
+  position: relative;
+  width: min(860px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border-radius: 32px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(10, 17, 40, 0.18);
+}
+
+.sell-modal-shell .main-screen {
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.sell-screen {
+  min-height: 100%;
+  padding: 18px 18px 22px;
+  background: linear-gradient(180deg, #fbfbfc 0%, #ffffff 12%);
+}
+
+.sell-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 44px 1fr 108px;
+  align-items: center;
+  width: 100%;
+  margin: 0 0 18px;
+  padding: 4px 0 16px;
+  background: linear-gradient(180deg, rgba(251, 251, 252, 0.98), rgba(251, 251, 252, 0.72));
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #ece8dd;
+}
+
+.sell-header h1 {
+  margin: 0;
+  text-align: center;
+  color: #d4af37;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32px;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.sell-close,
+.sell-draft {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0a1128;
+  font-size: 16px;
+  border: 1px solid #e8e4da;
+  box-shadow: 0 10px 24px rgba(10, 17, 40, 0.08);
+}
+
+.sell-draft {
+  justify-self: end;
+  width: auto;
+  min-width: 108px;
+  padding: 0 16px;
+  color: #0a1128;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.sell-body {
+  display: grid;
+  gap: 26px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+.sell-photo-card {
+  padding: 16px;
+  border: 1px solid #e7e3da;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(10, 17, 40, 0.06);
+  margin-bottom: 2px;
+}
+
+.sell-photo-viewport {
+  overflow: hidden;
+}
+
+.sell-photo-rail {
+  display: flex;
+  gap: 14px;
+  padding-bottom: 8px;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.sell-photo-rail:active {
+  cursor: grabbing;
+}
+
+.sell-photo-add,
+.sell-photo-thumb {
+  flex: none;
+  width: 210px;
+  height: 210px;
+  border-radius: 18px;
+}
+
+.sell-photo-add {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #0a1128, #162847);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.sell-photo-plus {
+  font-size: 54px;
+  line-height: 1;
+  color: #d4af37;
+}
+
+.sell-photo-add strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sell-photo-add span:last-child {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+}
+
+.sell-photo-thumb {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #f4f5f7;
+}
+
+.sell-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sell-photo-remove {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  color: #0a1128;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+}
+
+.sell-photo-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sell-photo-warning {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff4de;
+  color: #8a5d00;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sell-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 999px;
+  background: #d7d2c6;
+  transition:
+    width 0.22s ease,
+    background-color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.sell-dot.active {
+  width: 28px;
+  background: #d4af37;
+  transform: translateY(-1px);
+}
+
+.sell-photo-status {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 17, 40, 0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sell-form-card {
+  display: grid;
+  gap: 18px;
+  padding: 24px 22px 22px;
+  border: 1px solid #e7e3da;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(10, 17, 40, 0.08);
+  margin-top: 2px;
+}
+
+.sell-section h2 {
+  margin: 0 0 12px;
+  color: #0a1128;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+}
+
+.sell-label {
+  display: block;
+  margin: 0 0 10px;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sell-input,
+.sell-textarea,
+.sell-select {
+  width: 100%;
+  border: 1px solid #ddd8cd;
+  border-radius: 16px;
+  padding: 16px 18px;
+  color: #0a1128;
+  font-size: 16px;
+  outline: none;
+  background: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.sell-hint {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.sell-input::placeholder,
+.sell-textarea::placeholder {
+  color: #a8acb5;
+}
+
+.sell-textarea {
+  min-height: 168px;
+  resize: none;
+  line-height: 1.55;
+}
+
+.sell-trade-textarea {
+  min-height: 120px;
+}
+
+.sell-segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  --segment-gap: 8px;
+  --segment-pad: 8px;
+  gap: var(--segment-gap);
+  padding: var(--segment-pad);
+  border: 1px solid #8a7c63;
+  border-radius: 0;
+  background: #000000b5;
+  isolation: isolate;
+  overflow: hidden;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+  margin-bottom: 16px;
+}
+
+.sell-segment-indicator {
+  position: absolute;
+  inset: var(--segment-pad) auto var(--segment-pad) var(--segment-pad);
+  width: calc((100% - (var(--segment-pad) * 2) - (var(--segment-gap) * 2)) / 3);
+  border: 1px solid #8a7c63;
+  border-radius: 0;
+  background: #222222;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  transition: transform 220ms ease;
+  will-change: transform;
+  z-index: 0;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+}
+
+.sell-segmented[data-transaction="sell"] .sell-segment-indicator {
+  transform: translateX(0);
+}
+
+.sell-segmented[data-transaction="trade"] .sell-segment-indicator {
+  transform: translateX(calc(100% + var(--segment-gap)));
+}
+
+.sell-segmented[data-transaction="free"] .sell-segment-indicator {
+  transform: translateX(calc(200% + (var(--segment-gap) * 2)));
+}
+
+.sell-segment {
+  position: relative;
+  z-index: 1;
+  height: 52px;
+  border-radius: 0;
+  background: transparent;
+  color: #eadfca;
+  font-size: 14px;
+  font-weight: 800;
+  transition: color 220ms ease;
+}
+
+.sell-segment.active {
+  color: #f7ebd4;
+}
+
+.sell-segment:hover:not(.active) {
+  color: #fff3de;
+}
+
+.sell-price-input,
+.sell-row-button {
+  width: 100%;
+  height: 62px;
+  padding: 0 18px;
+  border: 1px solid #ddd8cd;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #6b7280;
+  font-size: 15px;
+  background: #fff;
+}
+
+.sell-region-row {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sell-notice {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #f7f2e1;
+  color: #6b4e00;
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 16px;
+}
+
+.sell-region-warning {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fbf7ea;
+  color: #8a6c12;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sell-region-warning strong {
+  color: #0a1128;
+}
+
+.sell-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.sell-secondary,
+.sell-submit {
+  height: 68px;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.sell-secondary {
+  border: 1px solid #0a1128;
+  background: #0a1128;
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(10, 17, 40, 0.18);
+}
+
+.sell-submit {
+  background: linear-gradient(180deg, #d4af37, #c89a1f);
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(212, 175, 55, 0.24);
+}
+
+.sell-secondary:disabled,
+.sell-submit:disabled {
+  background: linear-gradient(180deg, #c9c0ad, #bdb39d);
+  border-color: #c9c0ad;
+  box-shadow: none;
+}

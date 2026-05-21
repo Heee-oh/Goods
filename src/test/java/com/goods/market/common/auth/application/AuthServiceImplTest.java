@@ -2,7 +2,7 @@ package com.goods.market.common.auth.application;
 
 import com.goods.market.common.auth.application.dto.AuthLoginCommand;
 import com.goods.market.common.auth.application.dto.AuthSignupCommand;
-import com.goods.market.common.auth.application.dto.AuthTokenResponse;
+import com.goods.market.common.auth.application.dto.AuthTokenDto;
 import com.goods.market.common.auth.exception.AuthConflictException;
 import com.goods.market.common.auth.exception.AuthUnauthorizedException;
 import com.goods.market.common.auth.jwt.JwtTokenProvider;
@@ -49,7 +49,7 @@ class AuthServiceImplTest {
         when(jwtTokenProvider.createAccessToken(101L)).thenReturn("token-101");
         when(jwtTokenProvider.getAccessTokenValiditySeconds()).thenReturn(3600L);
 
-        AuthTokenResponse response = authService.signup(new AuthSignupCommand("01012345678", "alice", 1));
+        AuthTokenDto response = authService.signup(new AuthSignupCommand("01012345678", "alice", 1));
 
         assertThat(response.memberId()).isEqualTo(101L);
         assertThat(response.accessToken()).isEqualTo("token-101");
@@ -77,7 +77,7 @@ class AuthServiceImplTest {
         when(jwtTokenProvider.createAccessToken(10L)).thenReturn("token-10");
         when(jwtTokenProvider.getAccessTokenValiditySeconds()).thenReturn(3600L);
 
-        AuthTokenResponse response = authService.login(new AuthLoginCommand("01012345678"));
+        AuthTokenDto response = authService.login(new AuthLoginCommand("01012345678"));
 
         assertThat(response.memberId()).isEqualTo(10L);
         assertThat(response.accessToken()).isEqualTo("token-10");
@@ -92,4 +92,3 @@ class AuthServiceImplTest {
                 .isInstanceOf(AuthUnauthorizedException.class);
     }
 }
-

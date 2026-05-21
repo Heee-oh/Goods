@@ -13,31 +13,58 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "26.05.12(화) 기록.md",
+                "file": "26.05.14(목) 기록.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "26.05.12(화) 기록"
+              "title": "26.05.14(목) 기록"
             }
-          }
-        ]
-      },
-      {
-        "id": "a226bd8bce73fecf",
-        "type": "tabs",
-        "children": [
+          },
           {
-            "id": "c8edd8d2a4d38326",
+            "id": "9bd70d707ba10229",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "그래프 뷰"
+              "type": "markdown",
+              "state": {
+                "file": "코테 준비.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "코테 준비"
+            }
+          },
+          {
+            "id": "ec6a93be064eaffd",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "코테 준비.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "코테 준비"
+            }
+          },
+          {
+            "id": "73a2fefa0fa7eaf9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "포트폴리오 세션.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "포트폴리오 세션"
             }
           }
-        ]
+        ],
+        "currentTab": 3
       }
     ],
     "direction": "vertical"
@@ -199,8 +226,12 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "757497c45d8a0635",
+  "active": "73a2fefa0fa7eaf9",
   "lastOpenFiles": [
+    "무제.md",
+    "코테 준비.md",
+    "포트폴리오 세션.md",
+    "26.05.14(목) 기록.md",
     "26.05.12(화) 기록.md"
   ]
 }

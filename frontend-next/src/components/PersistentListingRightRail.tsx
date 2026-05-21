@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ChatDock } from "./ChatDock";
 import { useTradeRail } from "../lib/tradeRail";
 
-const LISTING_CHROME_PATH = /^\/(listing|trading|my-listings|wishlist|profile)(?:\/|$)/;
+const LISTING_CHROME_PATH = /^\/(listing|trading|my-listings|wishlist|sales-history|purchase-history|received-reviews|profile)(?:\/|$)/;
 
 const ListingRightRail = memo(function ListingRightRail({
   tradeRailOpen,

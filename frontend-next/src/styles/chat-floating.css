@@ -1,0 +1,175 @@
+.chat-float-product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #e5eaf2;
+  border-radius: 18px;
+  background: #fbfcfe;
+}
+
+.chat-float-window .chat-room-quick-actions {
+  display: none;
+}
+
+.chat-float-action-wrap {
+  position: relative;
+  flex: none;
+  align-self: center;
+  margin-left: auto;
+}
+
+.chat-float-action-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #10243a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.chat-float-action-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 132px;
+  padding: 6px;
+  border: 1px solid #dfe5ee;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 30px rgba(16, 36, 58, 0.14);
+  z-index: 5;
+}
+
+.chat-float-action-menu button {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 700;
+  color: #10243a;
+}
+
+.chat-float-action-menu button:hover {
+  background: #f3f6fb;
+}
+
+.chat-float-product-media {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eef2f7;
+}
+
+.chat-float-product-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #eef2f7, #dde3ec);
+}
+
+.chat-float-product-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+}
+
+.chat-float-product-copy strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #10192d;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.chat-float-product-copy p {
+  margin: 0;
+  color: var(--brand-gold);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.chat-float-product-skeleton {
+  align-items: center;
+}
+
+.chat-float-skeleton-box,
+.chat-float-skeleton-line,
+.chat-float-skeleton-pill,
+.chat-float-message-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #eef2f7 0%, #dde5ef 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: chat-float-skeleton 1.35s ease-in-out infinite;
+}
+
+.chat-float-skeleton-box {
+  flex: none;
+}
+
+.chat-float-skeleton-line {
+  height: 12px;
+  border-radius: 999px;
+}
+
+.chat-float-skeleton-line-title {
+  width: 58%;
+  margin-bottom: 8px;
+}
+
+.chat-float-skeleton-line-price {
+  width: 34%;
+}
+
+.chat-float-skeleton-pill {
+  width: 56px;
+  height: 30px;
+  border-radius: 999px;
+  margin-left: auto;
+}
+
+.chat-float-messages-skeleton {
+  gap: 12px;
+}
+
+.chat-float-message-skeleton {
+  width: 72%;
+  height: 44px;
+  border-radius: 18px;
+  align-self: flex-start;
+}
+
+.chat-float-message-skeleton.mine {
+  align-self: flex-end;
+  width: 64%;
+  background: linear-gradient(90deg, #d8e4f8 0%, #c8d7f3 50%, #d8e4f8 100%);
+}
+
+.chat-float-message-skeleton.short {
+  width: 48%;
+}
+
+@keyframes chat-float-skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

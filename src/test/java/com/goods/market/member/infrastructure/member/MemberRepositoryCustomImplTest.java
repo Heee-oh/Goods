@@ -1,6 +1,6 @@
 package com.goods.market.member.infrastructure.member;
 
-import com.goods.market.member.application.dto.MemberResponse;
+import com.goods.market.member.application.dto.MemberDto;
 import com.goods.market.member.domain.Member;
 import com.goods.market.member.domain.PhoneNumber;
 import org.assertj.core.api.Assertions;
@@ -19,7 +19,7 @@ class MemberRepositoryCustomImplTest {
     @Transactional
     void qTest() {
         Member saved = memberJpaRepository.save(new Member("abc", new PhoneNumber("01012345678")));
-        MemberResponse member = memberJpaRepository.findMember(saved.getId());
+        MemberDto member = memberJpaRepository.findMember(saved.getId());
 
         Assertions.assertThat(member).isNotNull();
         Assertions.assertThat(member.smileScore()).isEqualTo(100);

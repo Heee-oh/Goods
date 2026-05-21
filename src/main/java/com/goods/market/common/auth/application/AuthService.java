@@ -2,11 +2,10 @@ package com.goods.market.common.auth.application;
 
 import com.goods.market.common.auth.application.dto.AuthLoginCommand;
 import com.goods.market.common.auth.application.dto.AuthSignupCommand;
-import com.goods.market.common.auth.application.dto.AuthTokenResponse;
+import com.goods.market.common.auth.application.dto.AuthTokenDto;
 
 public interface AuthService {
-    AuthTokenResponse signup(AuthSignupCommand command);
+    AuthTokenDto signup(AuthSignupCommand command);
 
-    AuthTokenResponse login(AuthLoginCommand command);
+    AuthTokenDto login(AuthLoginCommand command);
 }
-

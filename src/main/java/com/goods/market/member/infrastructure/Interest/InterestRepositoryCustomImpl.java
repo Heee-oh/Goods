@@ -1,7 +1,7 @@
 package com.goods.market.member.infrastructure.Interest;
 
-import com.goods.market.member.application.dto.InterestResponse;
-import com.goods.market.member.application.dto.QInterestResponse;
+import com.goods.market.member.application.dto.InterestDto;
+import com.goods.market.member.application.dto.QInterestDto;
 import com.goods.market.member.domain.QInterest;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -21,11 +21,11 @@ public class InterestRepositoryCustomImpl implements InterestRepositoryCustom {
 
 
     @Override
-    public Slice<InterestResponse> findAllByMemberId(Long memberId, Long lastInterestId, Pageable pageable) {
+    public Slice<InterestDto> findAllByMemberId(Long memberId, Long lastInterestId, Pageable pageable) {
         int pageSize = pageable.getPageSize();
 
-        List<InterestResponse> contents = queryFactory
-                .select(new QInterestResponse(
+        List<InterestDto> contents = queryFactory
+                .select(new QInterestDto(
                         qInterest.id,
                         qInterest.listingId
                 ))

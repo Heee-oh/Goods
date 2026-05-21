@@ -66,8 +66,8 @@ function formatPrice(amount: number | null, transactionType: TransactionType) {
 }
 
 function formatSmileScore(value: number | null | undefined) {
-  const temp = Number(value ?? 100);
-  return `${(temp / 10).toFixed(1)}\uC810`;
+  const score = Number(value ?? 100);
+  return `${(score / 10).toFixed(1)}\uC810`;
 }
 
 function formatUpdatedAt(value: string) {
@@ -246,7 +246,14 @@ export function ListingDetailPage() {
         throw new Error("Missing chat room id.");
       }
 
-      navigate(`/chatting/${String(chatRoomId)}`);
+      window.dispatchEvent(
+        new CustomEvent("goods:open-chat-room", {
+          detail: {
+            chatRoomId: String(chatRoomId),
+            partnerNickname: sellerNickname
+          }
+        })
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open chat room.");
     } finally {
@@ -561,7 +568,7 @@ export function ListingDetailPage() {
                   <p>{sellerRegionName}</p>
                 </div>
               </div>
-              <div className="listing-seller-temp">
+              <div className="listing-seller-score">
                 <strong>{formatSmileScore(detail.seller_smile_score)}</strong>
                 <span>{"\uC2A4\uB9C8\uC77C\uC9C0\uC218"}</span>
               </div>
@@ -647,8 +654,6 @@ export function ListingDetailPage() {
 
   return content;
 }
-
-
 
 
 

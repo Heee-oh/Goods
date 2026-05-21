@@ -1,6 +1,6 @@
 var config = {
-    appId: "com.daangn.market",
-    appName: "Daangn",
+    appId: "com.goods.market",
+    appName: "Goods",
     webDir: "dist",
     server: {
         androidScheme: "https"
