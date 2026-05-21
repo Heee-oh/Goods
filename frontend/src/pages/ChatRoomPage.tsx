@@ -28,6 +28,10 @@ type CurrentAppointment = {
 type ChatRoomDetail = {
   chat_room_id: number | string;
   listing_id: number | string;
+  listing_first_image: string | null;
+  listing_status: string | null;
+  listing_transaction_type: TransactionType | null;
+  seller_id: number | string;
   partner_id: number | string;
   partner_nickname: string;
   partner_profile_image: string | null;
@@ -36,19 +40,6 @@ type ChatRoomDetail = {
   listing_price: number | null;
   current_appointment: CurrentAppointment | null;
   messages: ChatMessageItem[];
-};
-
-type ListingSnapshot = {
-  seller_id?: number | string;
-  reserver_id?: number | string | null;
-  status?: string;
-  title?: string;
-  price_amount?: number | null;
-  transaction_type?: TransactionType;
-  images?: Array<{
-    image_url?: string;
-    sort_order?: number;
-  }>;
 };
 
 type SocketMessage = {
@@ -216,7 +207,6 @@ export function ChatRoomPage() {
   const stompRef = useRef<StompClientLike | null>(null);
   const appointmentInfoRef = useRef<AppointmentInfoPanelHandle | null>(null);
   const [room, setRoom] = useState<ChatRoomDetail | null>(null);
-  const [listing, setListing] = useState<ListingSnapshot | null>(null);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -250,9 +240,6 @@ export function ChatRoomPage() {
           chatRoomId: String(response.chat_room_id),
           partnerNickname: response.partner_nickname
         });
-
-        const listingResponse = await apiRequest<ListingSnapshot>(`/api/listings/${response.listing_id}`);
-        setListing(listingResponse);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           clearSession();
@@ -393,24 +380,23 @@ export function ChatRoomPage() {
   const currentAppointment = room?.current_appointment ?? null;
   const exchange = useExchangeState({
     room,
-    listing,
     currentAppointment
   });
-  const listingImageUrl = listing?.images?.[0]?.image_url ?? null;
-  const listingTransactionType = listing?.transaction_type ?? "sell";
-  const listingPriceAmount = listing?.price_amount ?? room?.listing_price ?? null;
+  const listingImageUrl = room?.listing_first_image ?? null;
+  const listingTransactionType = room?.listing_transaction_type ?? "sell";
+  const listingPriceAmount = room?.listing_price ?? null;
   const listingPriceLabel =
     listingTransactionType !== "sell" || listingPriceAmount == null || listingPriceAmount === 0
       ? getTransactionLabel(listingTransactionType)
       : formatPrice(listingPriceAmount);
 
   const isSeller = useMemo(() => {
-    if (!listing || memberId == null) {
+    if (!room || memberId == null) {
       return false;
     }
 
-    return String(listing.seller_id ?? "") === String(memberId);
-  }, [listing, memberId]);
+    return String(room.seller_id ?? "") === String(memberId);
+  }, [room, memberId]);
 
   const datedMessages = useMemo<DatedMessage[]>(() => {
     if (!room) {
@@ -564,7 +550,7 @@ export function ChatRoomPage() {
         })
       );
 
-      if (isSeller && listing?.status === "PUBLISHED") {
+      if (isSeller && room.listing_status === "PUBLISHED") {
         setShowReserveConfirm(true);
       }
 
@@ -624,12 +610,11 @@ export function ChatRoomPage() {
         })
       });
 
-      setListing((current) =>
+      setRoom((current) =>
         current
           ? {
               ...current,
-              status: "RESERVED",
-              reserver_id: room.partner_id
+              listing_status: "RESERVED"
             }
           : current
       );
@@ -663,12 +648,11 @@ export function ChatRoomPage() {
         })
       });
 
-      setListing((current) =>
+      setRoom((current) =>
         current
           ? {
               ...current,
-              status: "SOLD_OUT",
-              reserver_id: room.partner_id
+              listing_status: "SOLD_OUT"
             }
           : current
       );
@@ -889,5 +873,3 @@ export function ChatRoomPage() {
     </div>
   );
 }
-
-

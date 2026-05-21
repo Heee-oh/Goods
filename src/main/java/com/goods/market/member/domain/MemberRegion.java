@@ -66,6 +66,7 @@ public class MemberRegion {
         this.verifiedAt = now;
     }
 
+    // 선 동네 추가 후 인증을 위한 팩토리
     public static MemberRegion unverified(Integer regionId, boolean primary) {
         MemberRegion memberRegion = new MemberRegion();
         memberRegion.regionId = regionId;

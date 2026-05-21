@@ -7,6 +7,7 @@ import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.listing.domain.Status;
 import com.goods.market.region.domain.QRegion;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.core.types.dsl.StringExpression;
@@ -75,6 +76,9 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
                 listing.price.transactionType,
                 listing.price.priceAmount
         );
+        NumberExpression<Long> resolvedPriceAmount = new CaseBuilder()
+                .when(resolvedTransactionType.eq("sell")).then(listing.price.priceAmount.coalesce(0L))
+                .otherwise(0L);
 
         List<ListingResponse> fetch
                 = queryFactory.select(new QListingResponse(
@@ -82,7 +86,7 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
                         listing.sellerId,
                         listing.title,
                         listing.categoryId,
-                        listing.price.priceAmount,
+                        resolvedPriceAmount,
                         resolvedTransactionType,
                         listing.status,
                         region.dongnm,

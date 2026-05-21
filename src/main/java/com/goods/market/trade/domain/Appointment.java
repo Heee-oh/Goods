@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import com.goods.market.trade.exception.AppointmentBadRequestException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -70,6 +71,8 @@ public class Appointment {
             Instant meetAt,
             Integer reminderMinutes
     ) {
+        validateReminderWindow(meetAt, reminderMinutes);
+
         Appointment appointment = new Appointment();
         appointment.listingId = listingId;
         appointment.sellerId = sellerId;
@@ -82,6 +85,17 @@ public class Appointment {
         appointment.createdAt = Instant.now();
         appointment.updatedAt = appointment.createdAt;
         return appointment;
+    }
+
+    private static void validateReminderWindow(Instant meetAt, Integer reminderMinutes) {
+        if (meetAt == null || reminderMinutes == null) {
+            return;
+        }
+
+        Instant notificationTime = meetAt.minus(Duration.ofMinutes(reminderMinutes));
+        if (notificationTime.isBefore(Instant.now())) {
+            throw new AppointmentBadRequestException("Reminder time must be in the future");
+        }
     }
 
     public void cancel() {

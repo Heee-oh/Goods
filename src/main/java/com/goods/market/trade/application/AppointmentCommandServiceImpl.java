@@ -5,6 +5,7 @@ import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeAppointmentReminderDueEvent;
+import com.goods.market.common.event.events.TradeAppointmentCanceledEvent;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
 import com.goods.market.common.event.events.TradeAppointmentTradePromptEvent;
 import com.goods.market.trade.application.dto.AppointmentResponse;
@@ -46,8 +47,9 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
                         chatRoom.getBuyerId(),
                         AppointmentStatus.SCHEDULED
                 )
-                .ifPresent(Appointment::cancel);
+                .ifPresent(Appointment::cancel); // 기존 약속이 존재한다면 cancel
 
+        // 새 약속 생성
         Appointment appointment = Appointment.schedule(
                 chatRoom.getListingId(),
                 chatRoom.getSellerId(),
@@ -75,6 +77,13 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
                 .orElseThrow(EntityNotFoundException::new);
         validateParticipant(appointment, memberId);
         appointment.cancel();
+
+        domainEventPublisher.publish(new TradeAppointmentCanceledEvent(
+                appointment.getId(),
+                appointment.getListingId(),
+                appointment.getSellerId(),
+                appointment.getBuyerId()
+        ));
     }
 
     @Override
@@ -90,17 +99,26 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
                 .map(this::toTradePromptResponse);
     }
 
+    /**
+     * 거래 완료를 미루기
+     * @param memberId
+     * @param appointmentId
+     */
     @Override
     @Transactional
     public void dismissTradePrompt(Long memberId, Long appointmentId) {
         Appointment appointment = appointmentRepository.findByIdAndStatus(appointmentId, AppointmentStatus.SCHEDULED)
                 .orElseThrow(EntityNotFoundException::new);
+
         if (!appointment.getSellerId().equals(memberId)) {
             throw new EntityNotFoundException();
         }
         appointment.dismissTradePrompt();
     }
 
+    /**
+     * 약속 시간 전 알림과, 약속 시간 후 거래완료 여부 확인 이벤트 발행
+     */
     @Override
     @Transactional
     public void processDueNotifications() {
@@ -108,7 +126,8 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
         for (Appointment appointment : appointmentRepository
                 .findByStatusAndNotificationTimeLessThanEqualAndReminderSentAtIsNull(AppointmentStatus.SCHEDULED, now)) {
-            appointment.markReminderSent();
+            appointment.markReminderSent(); // 리마인더를 보냈다고 마킹
+
             domainEventPublisher.publish(new TradeAppointmentReminderDueEvent(
                     appointment.getId(),
                     appointment.getListingId(),
@@ -117,13 +136,16 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
             ));
         }
 
-        Instant promptThreshold = now.minus(Duration.ofMinutes(3));
+        // 약속 시간 후 거래 완료했는지 알리는 팝업 이벤트
+        Instant promptThreshold = now.minus(Duration.ofMinutes(3)); // 약속 시간 후 3분이 지났는지 확인
+
         for (Appointment appointment : appointmentRepository
                 .findByStatusAndTradePromptSentAtIsNullAndMeetAtLessThanEqual(AppointmentStatus.SCHEDULED, promptThreshold)) {
             if (!isTradePromptEligible(appointment)) {
                 continue;
             }
 
+            // 거래 여부 알림 마킹 (보냈다 표시)
             appointment.markTradePromptSent();
             domainEventPublisher.publish(new TradeAppointmentTradePromptEvent(
                     appointment.getId(),
@@ -147,6 +169,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
         }
     }
 
+    // 판매글이 삭제되지 않고, 예약중인지 확인
     private boolean isTradePromptEligible(Appointment appointment) {
         Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(appointment.getListingId())
                 .orElse(null);

@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { apiRequest } from "../lib/api";
-import { getAccessToken, getMemberId, getSelectedRegionId } from "../lib/auth";
+import { getAccessToken, getMemberId } from "../lib/auth";
 import { useChatNotifications } from "../lib/chatNotifications";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -21,6 +21,8 @@ type ChatMessageItem = {
 type ChatRoomDetail = {
   chat_room_id: number | string;
   listing_id: number | string;
+  listing_first_image: string | null;
+  listing_transaction_type: TransactionType | null;
   partner_nickname: string;
   partner_profile_image: string | null;
   partner_smile_score: number | null;
@@ -33,18 +35,6 @@ type ChatRoomDetail = {
     reminder_minutes: number | null;
   } | null;
   messages: ChatMessageItem[];
-};
-
-type ListingDetailResponse = {
-  title?: string;
-  price_amount?: number | null;
-  transaction_type?: TransactionType;
-  images?: Array<{
-    image_url?: string;
-    sort_order?: number;
-  }>;
-  distance_km?: number | null;
-  distanceKm?: number | null;
 };
 
 type AppointmentResponse = {
@@ -155,8 +145,6 @@ export function ChatFloatingWindow({
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
   const [position, setPosition] = useState(initialPosition);
-  const [listingImageUrl, setListingImageUrl] = useState<string | null>(null);
-  const [listingTransactionType, setListingTransactionType] = useState<TransactionType>("sell");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showAppointmentMenu, setShowAppointmentMenu] = useState(false);
 
@@ -175,6 +163,8 @@ export function ChatFloatingWindow({
   }, [room]);
   const currentAppointment = room?.current_appointment ?? null;
   const showLoadingShell = loading && !room;
+  const listingImageUrl = room?.listing_first_image ?? null;
+  const listingTransactionType = room?.listing_transaction_type ?? "sell";
 
   useEffect(() => {
     if (minimized) {
@@ -211,42 +201,6 @@ export function ChatFloatingWindow({
       disposed = true;
     };
   }, [chatRoomId, markRoomRead, minimized]);
-
-  useEffect(() => {
-    if (minimized || !room?.listing_id) {
-      return;
-    }
-
-    let disposed = false;
-    setListingImageUrl(null);
-    setListingTransactionType("sell");
-
-    const loadListing = async () => {
-      try {
-        const selectedRegionId = getSelectedRegionId();
-        const response = await apiRequest<ListingDetailResponse>(
-          `/api/listings/${room.listing_id}${selectedRegionId ? `?region_id=${selectedRegionId}` : ""}`
-        );
-        if (disposed) {
-          return;
-        }
-
-        setListingImageUrl(response.images?.[0]?.image_url ?? null);
-        setListingTransactionType(response.transaction_type ?? "sell");
-      } catch {
-        if (!disposed) {
-          setListingImageUrl(null);
-          setListingTransactionType("sell");
-        }
-      }
-    };
-
-    void loadListing();
-
-    return () => {
-      disposed = true;
-    };
-  }, [minimized, room?.listing_id]);
 
   useEffect(() => {
     if (!showAppointmentMenu) {
@@ -717,4 +671,3 @@ export function ChatFloatingWindow({
     </div>
   );
 }
-

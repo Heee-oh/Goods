@@ -27,6 +27,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             Instant threshold
     );
 
+    // 거래 완료 여부 알림을 보냈고, 거래 완료를 미루지 않은 약속들을 거래완료 여부 알림 보낸 시간 최신순 기준으로 조회
     List<Appointment> findBySellerIdAndStatusAndTradePromptSentAtIsNotNullAndTradePromptDismissedAtIsNullOrderByTradePromptSentAtDesc(
             Long sellerId,
             AppointmentStatus status

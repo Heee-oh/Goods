@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useLayoutEffect } from "react";
 import type { ChangeEvent } from "react";
 import { ApiError, apiRequest } from "../lib/api";
 import { convertImageToWebpFile } from "../lib/image";
@@ -62,6 +63,12 @@ type ListingSliceResponse = {
 type PublishedListingState = {
   refreshAt?: number;
   publishedListingId?: number;
+};
+
+type RailIndicatorState = {
+  top: number;
+  height: number;
+  visible: boolean;
 };
 
 const REGIONS_CACHE_PREFIX = "goods:member-regions";
@@ -209,6 +216,10 @@ export function ListingPage() {
   const isProfile = location.pathname.startsWith("/profile");
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const profileFileInputRef = useRef<HTMLInputElement | null>(null);
+  const marketplaceRailRef = useRef<HTMLDivElement | null>(null);
+  const myPageRailRef = useRef<HTMLDivElement | null>(null);
+  const marketplaceItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const myPageItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
   const [regionSearchOpen, setRegionSearchOpen] = useState(false);
   const [tradeRailOpen, setTradeRailOpen] = useState(() => {
@@ -237,8 +248,59 @@ export function ListingPage() {
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
   const [activeFeedFilter, setActiveFeedFilter] = useState<string>("all");
+  const [marketplaceIndicator, setMarketplaceIndicator] = useState<RailIndicatorState>({
+    top: 0,
+    height: 0,
+    visible: false
+  });
+  const [myPageIndicator, setMyPageIndicator] = useState<RailIndicatorState>({
+    top: 0,
+    height: 0,
+    visible: false
+  });
   const profileSmileValue = Number(me?.smile_score ?? me?.smileScore ?? 100);
   const profileSmileProgress = Math.max(0, Math.min(100, profileSmileValue / 10));
+  const marketplaceActiveIndex = !isTradingHub && !isMyCollection && !isWishlist && !isProfile ? 0 : isTradingHub ? 1 : isMyCollection ? 2 : -1;
+  const myPageActiveIndex = isWishlist ? 0 : isProfile ? 1 : -1;
+
+  useLayoutEffect(() => {
+    const syncIndicator = (
+      railRef: React.RefObject<HTMLDivElement | null>,
+      itemRefs: React.MutableRefObject<Array<HTMLButtonElement | null>>,
+      activeIndex: number,
+      setIndicator: React.Dispatch<React.SetStateAction<RailIndicatorState>>
+    ) => {
+      const rail = railRef.current;
+      const item = activeIndex >= 0 ? itemRefs.current[activeIndex] : null;
+
+      if (!rail || !item) {
+        setIndicator((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        return;
+      }
+
+      const nextState = {
+        top: item.offsetTop,
+        height: item.offsetHeight,
+        visible: true
+      };
+
+      setIndicator((prev) =>
+        prev.top === nextState.top && prev.height === nextState.height && prev.visible === nextState.visible ? prev : nextState
+      );
+    };
+
+    const sync = () => {
+      syncIndicator(marketplaceRailRef, marketplaceItemRefs, marketplaceActiveIndex, setMarketplaceIndicator);
+      syncIndicator(myPageRailRef, myPageItemRefs, myPageActiveIndex, setMyPageIndicator);
+    };
+
+    sync();
+    window.addEventListener("resize", sync);
+
+    return () => {
+      window.removeEventListener("resize", sync);
+    };
+  }, [marketplaceActiveIndex, myPageActiveIndex]);
 
   const loadRegions = async (options?: { force?: boolean }) => {
     const memberId = getMemberId();
@@ -687,10 +749,13 @@ export function ListingPage() {
     ? `${filteredListings.length}개의 저장한 굿즈`
     : isProfile
       ? `${me?.nickname?.trim() || "내 프로필"} · 스마일지수 ${formatSmileScore(me?.smile_score ?? me?.smileScore ?? 100)}`
-      : activeFeedFilter === "all"
-        ? "전체 게시글을 보고 있어요."
-        : `${filteredListings.length}개의 결과`;
+      : isTradingHub
+        ? "교환 게시글을 보고 있어요."
+        : isMyCollection
+          ? "내 게시글을 보고 있어요."
+          : "거래 및 나눔 게시글을 보고 있어요.";
   const isBootLoading = isProfileLoading || isInitialListingLoading;
+  const isFeedLoadingOverlay = loading && !isBootLoading && !loadingMore;
 
   const handleSelectRegion = async (regionId: number) => {
     try {
@@ -1017,41 +1082,69 @@ export function ListingPage() {
 
           <div className="listing-rail-group">
             <span className="listing-rail-label">MARKETPLACE</span>
-            {desktopMarketplace.map((item, index) => (
-              <button
-                key={item}
-                type="button"
-                className={
-                  (index === 0 && !isTradingHub && !isMyCollection && !isWishlist && !isProfile) ||
-                  (index === 1 && isTradingHub) ||
-                  (index === 2 && isMyCollection)
-                    ? "listing-rail-item active"
-                    : "listing-rail-item"
-                }
-                onClick={() => openFeedPage(index === 1 ? "/trading" : index === 2 ? "/my-listings" : "/listing")}
-              >
-                {item}
-              </button>
-            ))}
+            <div className="listing-rail-stack" ref={marketplaceRailRef}>
+              <span
+                aria-hidden="true"
+                className="listing-rail-indicator"
+                style={{
+                  opacity: marketplaceIndicator.visible ? 1 : 0,
+                  transform: `translateY(${marketplaceIndicator.top}px)`,
+                  height: `${marketplaceIndicator.height}px`
+                }}
+              />
+              {desktopMarketplace.map((item, index) => (
+                <button
+                  key={item}
+                  ref={(node) => {
+                    marketplaceItemRefs.current[index] = node;
+                  }}
+                  type="button"
+                  className={
+                    (index === 0 && !isTradingHub && !isMyCollection && !isWishlist && !isProfile) ||
+                    (index === 1 && isTradingHub) ||
+                    (index === 2 && isMyCollection)
+                      ? "listing-rail-item active"
+                      : "listing-rail-item"
+                  }
+                  onClick={() => openFeedPage(index === 1 ? "/trading" : index === 2 ? "/my-listings" : "/listing")}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="listing-rail-group">
             <span className="listing-rail-label">MY PAGE</span>
-            {desktopMyPageLinks.map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                className={
-                  (item.path === "/wishlist" && isWishlist) ||
-                  (item.path === "/profile" && location.pathname.startsWith("/profile"))
-                    ? "listing-rail-item active"
-                    : "listing-rail-item"
-                }
-                onClick={() => openFeedPage(item.path)}
-              >
-                {item.label}
-              </button>
-            ))}
+            <div className="listing-rail-stack" ref={myPageRailRef}>
+              <span
+                aria-hidden="true"
+                className="listing-rail-indicator"
+                style={{
+                  opacity: myPageIndicator.visible ? 1 : 0,
+                  transform: `translateY(${myPageIndicator.top}px)`,
+                  height: `${myPageIndicator.height}px`
+                }}
+              />
+              {desktopMyPageLinks.map((item, index) => (
+                <button
+                  key={item.path}
+                  ref={(node) => {
+                    myPageItemRefs.current[index] = node;
+                  }}
+                  type="button"
+                  className={
+                    (item.path === "/wishlist" && isWishlist) ||
+                    (item.path === "/profile" && location.pathname.startsWith("/profile"))
+                      ? "listing-rail-item active"
+                      : "listing-rail-item"
+                  }
+                  onClick={() => openFeedPage(item.path)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="listing-rail-group">
@@ -1090,7 +1183,7 @@ export function ListingPage() {
             </header>
 
           <div className="listing-desktop-grid">
-            <main className="listing-feed-panel">
+            <main className={isFeedLoadingOverlay ? "listing-feed-panel is-loading" : "listing-feed-panel"}>
               {isBootLoading ? (
                 <section
                   className="listing-list listing-list-loading listing-list-loading-initial"
@@ -1099,7 +1192,7 @@ export function ListingPage() {
                   <Spinner className="listing-list-spinner" />
                 </section>
               ) : (
-                <>
+                <div className="listing-feed-content">
                   <div className="listing-feed-head">
                     <h1>{feedTitle}</h1>
                   </div>
@@ -1172,8 +1265,14 @@ export function ListingPage() {
                   ) : showFilteredEmptyState ? (
                     <p className="region-status">필터에 맞는 굿즈가 없어요.</p>
                   ) : null}
-                </>
+                </div>
               )}
+
+              {isFeedLoadingOverlay ? (
+                <div className="listing-feed-loading-overlay" aria-label="목록 갱신 중">
+                  <Spinner className="listing-list-spinner" />
+                </div>
+              ) : null}
 
               {!loading && listings.length > 0 ? <div ref={loadMoreRef} className="listing-load-trigger" /> : null}
               {loadingMore ? (

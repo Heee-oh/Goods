@@ -42,6 +42,7 @@ public class ChatRead {
         return chatRead;
     }
 
+    // 읽음 마킹
     public void markAsRead(Long messageId) {
         if (this.lastReadMessageId == null || this.lastReadMessageId < messageId) {
             this.lastReadMessageId = messageId;

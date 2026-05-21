@@ -8,6 +8,10 @@ import java.util.List;
 public record ChatRoomDetailResponse(
         Long chatRoomId,
         Long listingId,
+        String listingFirstImage,
+        String listingStatus,
+        String listingTransactionType,
+        Long sellerId,
         @JsonSerialize(using = ToStringSerializer.class)
         Long partnerId,
         String partnerNickname,

@@ -69,6 +69,49 @@ function ChatToastViewport() {
   );
 }
 
+function AppointmentReminderViewport() {
+  const navigate = useNavigate();
+  const { appointmentReminder, dismissAppointmentReminder } = useChatNotifications();
+
+  if (!appointmentReminder) {
+    return null;
+  }
+
+  const reminderTime = appointmentReminder.meetAt
+    ? new Date(appointmentReminder.meetAt).toLocaleString("ko-KR", {
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit"
+      })
+    : "";
+
+  const handleOpenChat = () => {
+    if (appointmentReminder.chatRoomId) {
+      navigate(`/chatting/${appointmentReminder.chatRoomId}`);
+    }
+    dismissAppointmentReminder();
+  };
+
+  return (
+    <div className="trade-prompt-overlay" onClick={dismissAppointmentReminder}>
+      <div className="trade-prompt-modal" onClick={(event) => event.stopPropagation()}>
+        <p>
+          <strong>{appointmentReminder.partnerNickname}</strong>님과의 약속 시간이 다가옵니다.
+        </p>
+        {reminderTime ? <p>{reminderTime}에 예정된 약속입니다.</p> : null}
+        <button type="button" className="chat-confirm-primary" onClick={handleOpenChat}>
+          {appointmentReminder.chatRoomId ? "채팅방 열기" : "확인"}
+        </button>
+        <button type="button" className="chat-confirm-secondary" onClick={dismissAppointmentReminder}>
+          닫기
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReviewPromptViewport() {
   const [prompt, setPrompt] = useState<ReviewPrompt | null>(null);
 
@@ -189,7 +232,10 @@ function TradeCompletionPromptViewport() {
         <p>
           <strong>{prompt.partner_nickname}</strong>님과의 거래를 완료했나요?
         </p>
-        <p>완료하면 게시글이 판매완료로 변경되고 구매자에게 리뷰 요청 알림이 전송됩니다.</p>
+        <p>
+          완료하면 게시글이 판매완료로 변경되고<br />
+          구매자에게 리뷰 요청 알림이 전송됩니다.
+        </p>
         <button type="button" className="chat-confirm-primary" disabled={busy} onClick={() => void handleComplete()}>
           {busy ? "처리 중..." : "거래 완료"}
         </button>
@@ -282,6 +328,7 @@ function AppRoutes() {
         </Routes>
       ) : null}
       <ChatToastViewport />
+      <AppointmentReminderViewport />
       <TradeCompletionPromptViewport />
       <ReviewPromptViewport />
     </>

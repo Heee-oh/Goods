@@ -27,6 +27,11 @@ public interface ListingJpaRepository extends JpaRepository<Listing, Long>, List
 
     @Transactional(readOnly = true)
     @EntityGraph(attributePaths = "images")
+    @Query("SELECT l FROM Listing l WHERE l.id = :listingId")
+    Optional<Listing> findByIdWithImages(@Param("listingId") Long listingId);
+
+    @Transactional(readOnly = true)
+    @EntityGraph(attributePaths = "images")
     @Query("SELECT l FROM Listing l WHERE l.id IN :listingIds AND l.deletedAt IS NULL")
     List<Listing> findActiveByIdInWithImages(@Param("listingIds") Collection<Long> listingIds);
 
@@ -40,4 +45,3 @@ public interface ListingJpaRepository extends JpaRepository<Listing, Long>, List
     int hideAllBySellerId(@Param("sellerId") Long sellerId);
 
 }
-

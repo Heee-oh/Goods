@@ -1,6 +1,7 @@
 package com.goods.market.chat.presentation;
 
 import com.goods.market.chat.application.ChatMessageService;
+import com.goods.market.chat.application.dto.ChatMessageSendResult;
 import com.goods.market.chat.presentation.dto.ChatMessageRequest;
 import com.goods.market.chat.presentation.dto.ChatMessageResponse;
 import com.goods.market.common.auth.AuthPrincipal;
@@ -34,7 +35,8 @@ public class ChatMessageController {
         AuthPrincipal authPrincipal = (AuthPrincipal) auth.getPrincipal();
 
         // 1. 비즈니스 로직: 전달받은 메시지를 DB에 저장하고, 응답용 DTO로 변환
-        ChatMessageResponse response = chatMessageService.saveMessage(request, authPrincipal.memberId());
+        ChatMessageSendResult result = chatMessageService.saveMessage(request, authPrincipal.memberId());
+        ChatMessageResponse response = result.message();
 
         // 2. 브로드캐스팅: 해당 채팅방을 구독(Subscribe)하고 있는 모든 클라이언트에게 메시지 전송
         // 목적지 URL: /sub/chat/room/{chatRoomId}
@@ -42,6 +44,12 @@ public class ChatMessageController {
                 "/sub/chat/room/" + response.chatRoomId(),
                 response
         );
-    }
 
+        if (result.firstMessage()) {
+            messagingTemplate.convertAndSend(
+                    "/sub/members/" + result.receiverId() + "/chat-events",
+                    response
+            );
+        }
+    }
 }
