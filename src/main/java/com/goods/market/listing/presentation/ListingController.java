@@ -4,14 +4,17 @@ import com.goods.market.common.api.ApiResponse;
 import com.goods.market.listing.application.ListingCommandService;
 import com.goods.market.listing.application.ListingImageStorageService;
 import com.goods.market.listing.application.ListingQueryService;
-import com.goods.market.listing.application.dto.ListingDetailResponse;
-import com.goods.market.listing.application.dto.ListingImageUploadResponse;
-import com.goods.market.listing.application.dto.ListingResponse;
-import com.goods.market.listing.application.dto.ListingDraftResponse;
+import com.goods.market.listing.application.dto.ListingDetailDto;
+import com.goods.market.listing.application.dto.ListingItemDto;
 import com.goods.market.listing.exception.ListingBadRequestException;
 import com.goods.market.listing.presentation.dto.request.ListingReserveRequest;
 import com.goods.market.listing.presentation.dto.request.ListingSoldOutRequest;
 import com.goods.market.listing.presentation.dto.request.ListingUpdateRequest;
+import com.goods.market.listing.presentation.dto.response.ListingDetailResponse;
+import com.goods.market.listing.presentation.dto.response.ListingDraftResponse;
+import com.goods.market.listing.presentation.dto.response.ListingImageUploadResponse;
+import com.goods.market.listing.presentation.dto.response.ListingResponse;
+import com.goods.market.listing.presentation.dto.response.ListingSoldOutResponse;
 import com.goods.market.common.auth.AuthPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -24,6 +27,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/listings")
@@ -48,8 +53,8 @@ public class ListingController {
             throw new ListingBadRequestException("region_id is required");
         }
         long cursor = lastListingId == null ? Long.MAX_VALUE : lastListingId;
-        Slice<ListingResponse> listings = listingQueryService.getListings(principal.memberId(), regionId, cursor, transactionType, sellerId);
-        return ResponseEntity.ok(ApiResponse.success(listings, request.getRequestURI()));
+        Slice<ListingItemDto> listings = listingQueryService.getListings(principal.memberId(), regionId, cursor, transactionType, sellerId);
+        return ResponseEntity.ok(ApiResponse.success(toListingResponseSlice(listings), request.getRequestURI()));
     }
 
     @PostMapping("/drafts")
@@ -84,10 +89,8 @@ public class ListingController {
             @RequestParam(name = "region_id", required = false) Integer regionId
     ) {
         Long viewerMemberId = principal == null ? null : principal.memberId();
-        return ResponseEntity.ok(ApiResponse.success(
-                listingQueryService.getListing(listingId, viewerMemberId, regionId),
-                request.getRequestURI()
-        ));
+        ListingDetailDto listing = listingQueryService.getListing(listingId, viewerMemberId, regionId);
+        return ResponseEntity.ok(ApiResponse.success(ListingDetailResponse.from(listing), request.getRequestURI()));
     }
 
     @PutMapping("/{listing_id}")
@@ -147,13 +150,14 @@ public class ListingController {
     }
 
     @PostMapping("/{listing_id}/sold-out")
-    public ResponseEntity<?> markSoldOut(
+    public ResponseEntity<ApiResponse<ListingSoldOutResponse>> markSoldOut(
             @AuthenticationPrincipal AuthPrincipal principal,
+            HttpServletRequest httpServletRequest,
             @PathVariable("listing_id") Long listingId,
             @Valid @RequestBody ListingSoldOutRequest request
     ) {
-        listingCommandService.markSoldOut(principal.memberId(), listingId, request.buyerId());
-        return ResponseEntity.noContent().build();
+        Long tradeId = listingCommandService.markSoldOut(principal.memberId(), listingId, request.buyerId());
+        return ResponseEntity.ok(ApiResponse.success(new ListingSoldOutResponse(tradeId), httpServletRequest.getRequestURI()));
     }
 
     @DeleteMapping("/{listing_id}")
@@ -163,5 +167,16 @@ public class ListingController {
     ) {
         listingCommandService.remove(principal.memberId(), listingId);
         return ResponseEntity.noContent().build();
+    }
+
+    private Slice<ListingResponse> toListingResponseSlice(Slice<ListingItemDto> slice) {
+        List<ListingResponse> responses = slice.getContent().stream()
+                .map(ListingResponse::from)
+                .toList();
+        return new org.springframework.data.domain.SliceImpl<>(
+                responses,
+                org.springframework.data.domain.PageRequest.of(slice.getNumber(), slice.getSize(), slice.getSort()),
+                slice.hasNext()
+        );
     }
 }

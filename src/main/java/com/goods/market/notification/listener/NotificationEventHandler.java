@@ -5,6 +5,7 @@ import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.common.event.events.TradeAppointmentReminderDueEvent;
 import com.goods.market.notification.application.dto.AppointmentReminderPayload;
+import com.goods.market.notification.application.dto.ReviewRequestPayload;
 import com.goods.market.common.event.events.ChatMessageSentEvent;
 import com.goods.market.common.event.events.ChatStartedEvent;
 import com.goods.market.common.event.events.TradeAppointmentCanceledEvent;
@@ -13,6 +14,7 @@ import com.goods.market.common.event.events.TradeCompletedEvent;
 import com.goods.market.common.event.events.ListingCreatedEvent;
 import com.goods.market.common.event.events.ListingReservationCanceledEvent;
 import com.goods.market.common.event.events.ListingSoldOutEvent;
+import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.domain.Member;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import com.goods.market.notification.domain.KeywordSubscription;
@@ -39,6 +41,7 @@ public class NotificationEventHandler {
     private final AppointmentRepository appointmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final MemberJpaRepository memberJpaRepository;
+    private final ListingJpaRepository listingJpaRepository;
     private final SimpMessageSendingOperations messagingTemplate;
 
     @EventListener
@@ -66,6 +69,7 @@ public class NotificationEventHandler {
     @EventListener
     public void handle(TradeCompletedEvent event) {
         notificationRepository.save(Notification.create(event.buyerId(), NotificationType.REVIEW_REQUEST));
+        sendReviewRequest(event);
     }
 
     @EventListener
@@ -129,6 +133,26 @@ public class NotificationEventHandler {
                         partner != null ? partner.getNickname() : "상대방",
                         appointment.getMeetAt(),
                         appointment.getReminderMinutes()
+                )
+        );
+    }
+
+    private void sendReviewRequest(TradeCompletedEvent event) {
+        String listingTitle = listingJpaRepository.findByIdAndDeletedAtIsNull(event.listingId())
+                .map(listing -> listing.getTitle() == null ? "" : listing.getTitle())
+                .orElse("");
+        String sellerNickname = memberJpaRepository.findById(event.sellerId())
+                .map(Member::getNickname)
+                .orElse("상대방");
+
+        messagingTemplate.convertAndSend(
+                "/sub/members/" + event.buyerId() + "/notifications",
+                new ReviewRequestPayload(
+                        "REVIEW_REQUEST",
+                        event.tradeId(),
+                        listingTitle,
+                        sellerNickname,
+                        false
                 )
         );
     }

@@ -4,7 +4,7 @@ import com.goods.market.chat.domain.ChatRoom;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
-import com.goods.market.trade.application.dto.AppointmentResponse;
+import com.goods.market.trade.application.dto.AppointmentDto;
 import com.goods.market.trade.domain.Appointment;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
@@ -64,7 +64,7 @@ class AppointmentCommandServiceImplTest {
             return appointment;
         });
 
-        AppointmentResponse response = appointmentCommandService.schedule(1L, 20L, meetAt, 30);
+        AppointmentDto response = appointmentCommandService.schedule(1L, 20L, meetAt, 30);
 
         assertThat(existing.getStatus()).isEqualTo(AppointmentStatus.CANCELED);
         assertThat(response.appointmentId()).isEqualTo(99L);

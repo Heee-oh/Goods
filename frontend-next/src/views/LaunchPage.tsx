@@ -2,13 +2,10 @@ import { useEffect } from "react";
 import { useNavigate } from "@/lib/nextRouterCompat";
 import { hasAccessToken } from "../lib/auth";
 
-function DaangnMark() {
+function GoodsMark() {
   return (
-    <div className="daangn-mark" aria-hidden="true">
-      <div className="daangn-leaf" />
-      <div className="daangn-body">
-        <div className="daangn-hole" />
-      </div>
+    <div className="welcome-brand-mark" aria-hidden="true">
+      G
     </div>
   );
 }
@@ -26,7 +23,7 @@ export function LaunchPage() {
 
   return (
     <div className="main-screen launch-screen">
-      <DaangnMark />
+      <GoodsMark />
     </div>
   );
 }

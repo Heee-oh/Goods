@@ -1,7 +1,7 @@
 package com.goods.market.region.presentation;
 
 import com.goods.market.region.infrastructure.RegionJpaRepository;
-import com.goods.market.region.presentation.dto.RegionSearchResponse;
+import com.goods.market.region.presentation.dto.response.RegionSearchResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

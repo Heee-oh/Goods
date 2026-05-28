@@ -29,6 +29,7 @@ type TradeCompletionPrompt = {
 };
 
 const REVIEW_PROMPT_EVENT = "goods:review-prompt";
+const OPEN_CHAT_ROOM_EVENT = "goods:open-chat-room";
 
 const tabs = [
   { id: "listing", path: "/listing" },
@@ -38,7 +39,6 @@ const tabs = [
 ] as const;
 
 function ChatToastViewport() {
-  const navigate = useNavigate();
   const { toast, dismissToast, markRoomRead } = useChatNotifications();
 
   if (!toast) {
@@ -52,18 +52,25 @@ function ChatToastViewport() {
       onClick={() => {
         markRoomRead(toast.roomId);
         dismissToast();
-        navigate(`/chatting/${toast.roomId}`);
+        window.dispatchEvent(
+          new CustomEvent(OPEN_CHAT_ROOM_EVENT, {
+            detail: {
+              chatRoomId: toast.roomId,
+              partnerNickname: toast.partnerNickname
+            }
+          })
+        );
       }}
     >
       <span className="chat-toast-icon" aria-hidden="true">
-        梨꾪똿
+        {"\uD1A1"}
       </span>
       <span className="chat-toast-copy">
         <strong>{toast.partnerNickname}</strong>
         <span>{toast.content}</span>
       </span>
       <span className="chat-toast-close" aria-hidden="true">
-        ?リ린
+        {"\uC5F4\uAE30"}
       </span>
     </button>
   );

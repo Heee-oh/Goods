@@ -7,6 +7,9 @@ import jakarta.validation.constraints.Size;
 
 public record ReviewCreateRequest(
         @NotNull
+        Long tradeId,
+
+        @NotNull
         Boolean isSeller,
 
         @NotNull

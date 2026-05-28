@@ -1,9 +1,9 @@
 package com.goods.market.member.infrastructure.member;
 
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.MemberResponse;
-import com.goods.market.member.application.dto.QMemberRegionResponse;
-import com.goods.market.member.application.dto.QMemberResponse;
+import com.goods.market.member.application.dto.MemberDto;
+import com.goods.market.member.application.dto.MemberRegionDto;
+import com.goods.market.member.application.dto.QMemberDto;
+import com.goods.market.member.application.dto.QMemberRegionDto;
 import com.goods.market.member.domain.MemberStatus;
 import com.goods.market.member.domain.QMember;
 import com.goods.market.member.domain.QMemberRegion;
@@ -26,9 +26,9 @@ public class MemberRepositoryCustomImpl implements MemberRepositoryCustom {
     private final QRegion region = QRegion.region;
 
     @Override
-    public MemberResponse findMember(Long memberId) {
-        MemberResponse result = queryFactory
-                .select(new QMemberResponse(
+    public MemberDto findMember(Long memberId) {
+        MemberDto result = queryFactory
+                .select(new QMemberDto(
                         qMember.nickname,
                         qMember.profileImageUrl,
                         qMember.smileScore
@@ -45,8 +45,8 @@ public class MemberRepositoryCustomImpl implements MemberRepositoryCustom {
         return result;
     }
     @Override
-    public List<MemberRegionResponse> findMemberRegion(Long memberId) {
-        return queryFactory.select(new QMemberRegionResponse(
+    public List<MemberRegionDto> findMemberRegion(Long memberId) {
+        return queryFactory.select(new QMemberRegionDto(
                         memberRegion.member.id,
                         memberRegion.regionId,
                         memberRegion.verifiedAt,

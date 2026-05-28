@@ -17,7 +17,7 @@ public interface ListingCommandService {
 
     void cancelReserve(Long sellerId, Long listingId);
 
-    void markSoldOut(Long sellerId, Long listingId, Long buyerId);
+    Long markSoldOut(Long sellerId, Long listingId, Long buyerId);
 
     void remove(Long sellerId, Long listingId);
 }

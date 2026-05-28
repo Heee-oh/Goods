@@ -4,11 +4,11 @@ import com.goods.market.common.auth.AuthPrincipal;
 import com.goods.market.listing.application.ListingImageStorageService;
 import com.goods.market.member.application.MemberCommandService;
 import com.goods.market.member.application.MemberQueryService;
-import com.goods.market.member.application.dto.InterestResponse;
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.MemberResponse;
-import com.goods.market.member.application.dto.MemberSignupCommand;
+import com.goods.market.member.application.dto.InterestDto;
+import com.goods.market.member.application.dto.MemberDto;
+import com.goods.market.member.application.dto.MemberRegionDto;
 import com.goods.market.member.application.dto.MemberUpdateCommand;
+import com.goods.market.member.presentation.dto.request.MemberUpdateRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,7 +78,7 @@ class MemberControllerTest {
 
     @Test
     void meReturnsMemberResponse() throws Exception {
-        when(memberQueryService.getMe(1L)).thenReturn(new MemberResponse("nick", "img.png", 365));
+        when(memberQueryService.getMe(1L)).thenReturn(new MemberDto("nick", "img.png", 365));
 
         mockMvc.perform(get("/api/members/me").with(authenticated(1L)))
                 .andExpect(status().isOk())
@@ -91,7 +91,7 @@ class MemberControllerTest {
     @Test
     void myRegionsReturnsList() throws Exception {
         when(memberQueryService.getMyRegions(1L)).thenReturn(List.of(
-                new MemberRegionResponse(10L, 11000, Instant.now(), true, "Seocho", null, null)
+                new MemberRegionDto(10L, 11000, Instant.now(), true, "Seocho", null, null)
         ));
 
         mockMvc.perform(get("/api/members/me/regions").with(authenticated(1L)))
@@ -106,7 +106,7 @@ class MemberControllerTest {
         mockMvc.perform(patch("/api/members/me")
                         .with(authenticated(1L))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new MemberUpdateCommand("newNick", "img2.png"))))
+                        .content(objectMapper.writeValueAsString(new MemberUpdateRequest("newNick", "img2.png"))))
                 .andExpect(status().isNoContent());
 
         verify(memberCommandService).updateMemberInfo(1L, new MemberUpdateCommand("newNick", "img2.png"));
@@ -169,8 +169,8 @@ class MemberControllerTest {
 
     @Test
     void interestsUsesDefaultCursorAndSize() throws Exception {
-        Slice<InterestResponse> slice = new SliceImpl<>(
-                List.of(new InterestResponse(10L, 900L)),
+        Slice<InterestDto> slice = new SliceImpl<>(
+                List.of(new InterestDto(10L, 900L)),
                 PageRequest.of(0, 20),
                 false
         );

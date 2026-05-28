@@ -468,8 +468,10 @@ CREATE TABLE public.trade (
     price bigint NOT NULL,
     seller_id bigint NOT NULL,
     status character varying(20) NOT NULL,
+    transaction_type character varying(20) NOT NULL,
     updated_at timestamp(6) with time zone NOT NULL,
-    CONSTRAINT trade_status_check CHECK (((status)::text = ANY ((ARRAY['CREATED'::character varying, 'COMPLETED'::character varying, 'CANCELED'::character varying])::text[])))
+    CONSTRAINT trade_status_check CHECK (((status)::text = ANY ((ARRAY['COMPLETED'::character varying, 'CANCELED'::character varying])::text[]))),
+    CONSTRAINT trade_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['SELL'::character varying, 'TRADE'::character varying, 'FREE'::character varying])::text[])))
 );
 
 
@@ -642,4 +644,3 @@ ALTER TABLE ONLY public.member_region
 --
 -- PostgreSQL database dump complete
 --
-

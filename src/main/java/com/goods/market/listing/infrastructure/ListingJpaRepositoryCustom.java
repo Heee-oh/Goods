@@ -1,12 +1,12 @@
 package com.goods.market.listing.infrastructure;
 
-import com.goods.market.listing.application.dto.ListingResponse;
+import com.goods.market.listing.application.dto.ListingItemDto;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 
 public interface ListingJpaRepositoryCustom {
 
-    Slice<ListingResponse> findListings(
+    Slice<ListingItemDto> findListings(
             Long memberId,
             Integer regionId,
             java.math.BigDecimal originLat,

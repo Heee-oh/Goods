@@ -13,120 +13,28 @@ import { apiRequest } from "./api";
 import { getAccessToken, getMemberId } from "./auth";
 import { writeCachedJson } from "./cache";
 import { getApiBaseUrl } from "./config";
-
-type RawChatRoomSummary = {
-  chat_room_id?: number | string;
-  chatRoomId?: number | string;
-  partner_nickname?: string;
-  partnerNickname?: string;
-};
-
-type SocketMessage = {
-  message_id?: number | string;
-  messageId?: number | string;
-  chat_room_id?: number | string;
-  chatRoomId?: number | string;
-  sender_id?: number | string;
-  senderId?: number | string;
-  created_at?: string;
-  createdAt?: string;
-  content: string;
-};
-
-type NotificationMessage = {
-  notification_type?: string;
-  notificationType?: string;
-  appointment_id?: number | string;
-  appointmentId?: number | string;
-  chat_room_id?: number | string | null;
-  chatRoomId?: number | string | null;
-  partner_nickname?: string;
-  partnerNickname?: string;
-  meet_at?: string;
-  meetAt?: string;
-};
-
-type ToastState = {
-  roomId: string;
-  partnerNickname: string;
-  content: string;
-};
-
-type AppointmentReminderState = {
-  appointmentId: string;
-  chatRoomId: string | null;
-  partnerNickname: string;
-  meetAt: string;
-};
-
-type StompSubscriptionLike = {
-  unsubscribe: () => void;
-};
-
-type StompClientLike = {
-  connected?: boolean;
-  activate: () => void;
-  deactivate: () => Promise<void> | void;
-  subscribe: (destination: string, callback: (frame: { body: string }) => void) => StompSubscriptionLike;
-};
-
-type ChatNotificationsContextValue = {
-  totalUnreadCount: number;
-  unreadCountByRoom: Record<string, number>;
-  roomsVersion: number;
-  toast: ToastState | null;
-  appointmentReminder: AppointmentReminderState | null;
-  dismissToast: () => void;
-  dismissAppointmentReminder: () => void;
-  registerRooms: (rooms: Array<{ chatRoomId: string; partnerNickname?: string | null }>) => void;
-  registerRoom: (room: { chatRoomId: string; partnerNickname?: string | null }) => void;
-  markRoomRead: (chatRoomId: string) => void;
-};
-
-const STORAGE_KEY = "chat_unread_counts";
-const CHAT_ROOMS_CACHE_PREFIX = "goods:chat-rooms";
-const CHAT_ROOM_PREVIEW_EVENT = "goods:chat-room-preview-updated";
+import {
+  CHAT_ROOM_PREVIEW_EVENT,
+  CHAT_ROOMS_CACHE_PREFIX,
+  CHAT_UNREAD_STORAGE_KEY
+} from "@/features/chat/notificationConstants";
+import type {
+  AppointmentReminderState,
+  ChatNotificationsContextValue,
+  NotificationMessage,
+  RawChatRoomSummary,
+  SocketMessage,
+  StompClientLike,
+  StompSubscriptionLike,
+  ToastState
+} from "@/features/chat/notificationTypes";
+import {
+  getActiveChatRoomId,
+  loadUnreadCounts,
+  normalizeRoom
+} from "@/features/chat/notificationUtils";
 
 const ChatNotificationsContext = createContext<ChatNotificationsContextValue | null>(null);
-
-function loadUnreadCounts() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return {};
-    }
-
-    const parsed = JSON.parse(raw) as Record<string, number>;
-    return Object.fromEntries(
-      Object.entries(parsed).filter(
-        ([roomId, count]) => typeof roomId === "string" && typeof count === "number" && count > 0
-      )
-    );
-  } catch {
-    return {};
-  }
-}
-
-function normalizeRoom(summary: RawChatRoomSummary) {
-  const chatRoomId = summary.chat_room_id ?? summary.chatRoomId;
-  if (chatRoomId == null) {
-    return null;
-  }
-
-  return {
-    chatRoomId: String(chatRoomId),
-    partnerNickname: summary.partner_nickname ?? summary.partnerNickname ?? null
-  };
-}
-
-function getActiveChatRoomId(pathname: string) {
-  const match = pathname.match(/^\/chatting\/([^/]+)$/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
 
 export function ChatNotificationsProvider({ children }: PropsWithChildren) {
   const location = useLocation();
@@ -173,7 +81,7 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(unreadCountByRoom));
+    window.localStorage.setItem(CHAT_UNREAD_STORAGE_KEY, JSON.stringify(unreadCountByRoom));
   }, [unreadCountByRoom, unreadCountsLoaded]);
 
   const registerRooms = useCallback(
@@ -298,9 +206,13 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
           content: payload.content
         });
       }
-
+      if (refreshAfterReceive && !roomDirectoryRef.current[incomingRoomId]) {
+        void refreshRooms().catch((error) => {
+          console.error("[chat][notifications] failed to refresh rooms", error);
+        });
+      }
     },
-    [emitRoomPreviewUpdate]
+    [emitRoomPreviewUpdate, refreshRooms]
   );
 
   useEffect(() => {
@@ -375,6 +287,24 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
         const handleNotificationEvent = (frame: { body: string }) => {
           const payload = JSON.parse(frame.body) as NotificationMessage;
           const notificationType = payload.notification_type ?? payload.notificationType;
+          if (notificationType === "REVIEW_REQUEST") {
+            const tradeId = payload.trade_id ?? payload.tradeId;
+            const partnerNickname = payload.partner_nickname ?? payload.partnerNickname;
+            if (tradeId != null && partnerNickname) {
+              window.dispatchEvent(
+                new CustomEvent("goods:review-prompt", {
+                  detail: {
+                    trade_id: String(tradeId),
+                    partner_nickname: partnerNickname,
+                    listing_title: payload.listing_title ?? payload.listingTitle ?? "",
+                    writer_is_seller: Boolean(payload.writer_is_seller ?? payload.writerIsSeller)
+                  }
+                })
+              );
+            }
+            return;
+          }
+
           if (notificationType !== "APPOINTMENT_ALARM") {
             return;
           }

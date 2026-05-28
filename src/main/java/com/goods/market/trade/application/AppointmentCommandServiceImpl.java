@@ -8,8 +8,8 @@ import com.goods.market.common.event.events.TradeAppointmentReminderDueEvent;
 import com.goods.market.common.event.events.TradeAppointmentCanceledEvent;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
 import com.goods.market.common.event.events.TradeAppointmentTradePromptEvent;
-import com.goods.market.trade.application.dto.AppointmentResponse;
-import com.goods.market.trade.application.dto.TradePromptResponse;
+import com.goods.market.trade.application.dto.AppointmentDto;
+import com.goods.market.trade.application.dto.TradePromptDto;
 import com.goods.market.trade.domain.Appointment;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
@@ -39,7 +39,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
 
     @Override
     @Transactional
-    public AppointmentResponse schedule(Long memberId, Long chatRoomId, Instant meetAt, Integer reminderMinutes) {
+    public AppointmentDto schedule(Long memberId, Long chatRoomId, Instant meetAt, Integer reminderMinutes) {
         ChatRoom chatRoom = findParticipatingChatRoom(memberId, chatRoomId);
 
         appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
@@ -67,7 +67,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
                 saved.getNotificationTime()
         ));
 
-        return new AppointmentResponse(saved.getId(), saved.getMeetAt(), saved.getReminderMinutes());
+        return new AppointmentDto(saved.getId(), saved.getMeetAt(), saved.getReminderMinutes());
     }
 
     @Override
@@ -87,7 +87,7 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     }
 
     @Override
-    public Optional<TradePromptResponse> getTradePrompt(Long memberId) {
+    public Optional<TradePromptDto> getTradePrompt(Long memberId) {
         return appointmentRepository
                 .findBySellerIdAndStatusAndTradePromptSentAtIsNotNullAndTradePromptDismissedAtIsNullOrderByTradePromptSentAtDesc(
                         memberId,
@@ -186,23 +186,26 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
                 .isPresent();
     }
 
-    private TradePromptResponse toTradePromptResponse(Appointment appointment) {
+    private TradePromptDto toTradePromptResponse(Appointment appointment) {
         ChatRoom chatRoom = chatRoomRepository.findByListingIdAndBuyerIdAndStatus(
                         appointment.getListingId(),
                         appointment.getBuyerId(),
                         ChatRoomStatus.ACTIVE
                 )
                 .orElseThrow(EntityNotFoundException::new);
+        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(appointment.getListingId())
+                .orElseThrow(EntityNotFoundException::new);
 
         Member buyer = memberJpaRepository.findById(appointment.getBuyerId())
                 .orElse(null);
 
-        return new TradePromptResponse(
+        return new TradePromptDto(
                 appointment.getId(),
                 appointment.getListingId(),
                 chatRoom.getId(),
                 appointment.getBuyerId(),
-                buyer != null ? buyer.getNickname() : ""
+                buyer != null ? buyer.getNickname() : "",
+                listing.getTitle()
         );
     }
 }

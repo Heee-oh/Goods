@@ -27,6 +27,8 @@ type SocketMessage = {
   chatRoomId?: number | string;
   sender_id?: number | string;
   senderId?: number | string;
+  created_at?: string;
+  createdAt?: string;
   content: string;
 };
 
@@ -82,6 +84,7 @@ type ChatNotificationsContextValue = {
 
 const STORAGE_KEY = "chat_unread_counts";
 const CHAT_ROOMS_CACHE_PREFIX = "goods:chat-rooms";
+const CHAT_ROOM_PREVIEW_EVENT = "goods:chat-room-preview-updated";
 
 const ChatNotificationsContext = createContext<ChatNotificationsContextValue | null>(null);
 
@@ -228,6 +231,22 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
     setRoomsVersion((current) => current + 1);
   }, [memberId, registerRooms, token]);
 
+  const emitRoomPreviewUpdate = useCallback((roomId: string, content: string, createdAt: string) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent(CHAT_ROOM_PREVIEW_EVENT, {
+        detail: {
+          chatRoomId: roomId,
+          content,
+          createdAt
+        }
+      })
+    );
+  }, []);
+
   const handleIncomingChatEvent = useCallback(
     (payload: SocketMessage, fallbackRoomId?: string, refreshAfterReceive = false) => {
       const incomingRoomId = String(payload.chat_room_id ?? payload.chatRoomId ?? fallbackRoomId ?? "");
@@ -236,6 +255,9 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
       }
 
       const senderId = String(payload.sender_id ?? payload.senderId ?? "");
+      const createdAt = payload.created_at ?? payload.createdAt ?? new Date().toISOString();
+      emitRoomPreviewUpdate(incomingRoomId, payload.content, createdAt);
+
       if (!senderId || senderId === memberIdRef.current) {
         return;
       }
@@ -269,12 +291,13 @@ export function ChatNotificationsProvider({ children }: PropsWithChildren) {
           content: payload.content
         });
       }
-
-      if (refreshAfterReceive) {
-        void refreshRooms();
+      if (refreshAfterReceive && !roomDirectoryRef.current[incomingRoomId]) {
+        void refreshRooms().catch((error) => {
+          console.error("[chat][notifications] failed to refresh rooms", error);
+        });
       }
     },
-    [refreshRooms]
+    [emitRoomPreviewUpdate, refreshRooms]
   );
 
   useEffect(() => {

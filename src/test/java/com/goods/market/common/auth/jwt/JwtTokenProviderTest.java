@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class JwtTokenProviderTest {
 
     private final JwtTokenProvider jwtTokenProvider = new JwtTokenProvider(
-            "daangn-market-default-secret-key-change-this-please-2026",
+            "goods-market-default-secret-key-change-this-please-2026",
             3600L
     );
 
@@ -31,4 +31,3 @@ class JwtTokenProviderTest {
         assertThat(jwtTokenProvider.validate("invalid-token")).isFalse();
     }
 }
-

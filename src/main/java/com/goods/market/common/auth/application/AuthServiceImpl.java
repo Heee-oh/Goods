@@ -2,7 +2,7 @@ package com.goods.market.common.auth.application;
 
 import com.goods.market.common.auth.application.dto.AuthLoginCommand;
 import com.goods.market.common.auth.application.dto.AuthSignupCommand;
-import com.goods.market.common.auth.application.dto.AuthTokenResponse;
+import com.goods.market.common.auth.application.dto.AuthTokenDto;
 import com.goods.market.common.auth.exception.AuthBadRequestException;
 import com.goods.market.common.auth.exception.AuthConflictException;
 import com.goods.market.common.auth.exception.AuthUnauthorizedException;
@@ -28,7 +28,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Override
-    public AuthTokenResponse signup(AuthSignupCommand command) {
+    public AuthTokenDto signup(AuthSignupCommand command) {
         PhoneNumber phoneNumber = parsePhoneNumber(command.phoneNumber());
         if (memberJpaRepository.findByPhoneNumber(phoneNumber).isPresent()) {
             throw new AuthConflictException("Phone number is already registered");
@@ -42,18 +42,18 @@ public class AuthServiceImpl implements AuthService {
         Member savedMember = memberJpaRepository.save(member);
         String accessToken = jwtTokenProvider.createAccessToken(savedMember.getId());
 
-        return new AuthTokenResponse(savedMember.getId(), accessToken, jwtTokenProvider.getAccessTokenValiditySeconds());
+        return new AuthTokenDto(savedMember.getId(), accessToken, jwtTokenProvider.getAccessTokenValiditySeconds());
     }
 
     @Override
     @Transactional(readOnly = true)
-    public AuthTokenResponse login(AuthLoginCommand command) {
+    public AuthTokenDto login(AuthLoginCommand command) {
         PhoneNumber phoneNumber = parsePhoneNumber(command.phoneNumber());
 
         Member member = memberJpaRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new AuthUnauthorizedException("Member not found for this phone number"));
         String accessToken = jwtTokenProvider.createAccessToken(member.getId());
-        return new AuthTokenResponse(member.getId(), accessToken, jwtTokenProvider.getAccessTokenValiditySeconds());
+        return new AuthTokenDto(member.getId(), accessToken, jwtTokenProvider.getAccessTokenValiditySeconds());
     }
 
     private PhoneNumber parsePhoneNumber(String rawPhoneNumber) {
@@ -76,4 +76,3 @@ public class AuthServiceImpl implements AuthService {
         return "user_" + UUID.randomUUID().toString().substring(0, 7);
     }
 }
-

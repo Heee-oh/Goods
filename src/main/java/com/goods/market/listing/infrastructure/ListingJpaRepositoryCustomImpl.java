@@ -1,7 +1,7 @@
 package com.goods.market.listing.infrastructure;
 
-import com.goods.market.listing.application.dto.ListingResponse;
-import com.goods.market.listing.application.dto.QListingResponse;
+import com.goods.market.listing.application.dto.ListingItemDto;
+import com.goods.market.listing.application.dto.QListingItemDto;
 import com.goods.market.listing.domain.QListing;
 import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.listing.domain.Status;
@@ -40,16 +40,10 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
 
     /**
      * 내 행정동 3KM 범위 내 판매글 조회 (작성중 x, 슬라이스)
-     * @param memberId 본인 id
-     * @param regionId 해당 멤버의 행정동 id
-     * @param lastListingId
-     * @param size
-     * @param pageable
-     * @return
      */
     @Override
     @Transactional(readOnly = true)
-    public Slice<ListingResponse> findListings(
+    public Slice<ListingItemDto> findListings(
             Long memberId,
             Integer regionId,
             BigDecimal originLat,
@@ -80,8 +74,8 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
                 .when(resolvedTransactionType.eq("sell")).then(listing.price.priceAmount.coalesce(0L))
                 .otherwise(0L);
 
-        List<ListingResponse> fetch
-                = queryFactory.select(new QListingResponse(
+        List<ListingItemDto> fetch
+                = queryFactory.select(new QListingItemDto(
                         listing.id,
                         listing.sellerId,
                         listing.title,

@@ -27,8 +27,8 @@ public class Trade {
     @Column(name = "buyer_id", nullable = false)
     private Long buyerId;
 
-    @Column(name = "price", nullable = false)
-    private Long price;
+    @Embedded
+    private Price price;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
@@ -43,7 +43,7 @@ public class Trade {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public static Trade complete(Long listingId, Long sellerId, Long buyerId, Long price) {
+    public static Trade complete(Long listingId, Long sellerId, Long buyerId, Price price) {
         Trade trade = new Trade();
         trade.listingId = listingId;
         trade.sellerId = sellerId;

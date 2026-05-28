@@ -3,10 +3,12 @@ package com.goods.market.chat.presentation;
 import com.goods.market.common.api.ApiResponse;
 import com.goods.market.chat.application.ChatQueryService;
 import com.goods.market.chat.application.ChatRoomService;
+import com.goods.market.chat.application.dto.ChatRoomDetailDto;
+import com.goods.market.chat.application.dto.ChatRoomSummaryDto;
 import com.goods.market.chat.presentation.dto.ChatRoomCreateRequest;
-import com.goods.market.chat.presentation.dto.ChatRoomCreateResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomDetailResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomSummaryResponse;
+import com.goods.market.chat.presentation.dto.response.ChatRoomCreateResponse;
+import com.goods.market.chat.presentation.dto.response.ChatRoomDetailResponse;
+import com.goods.market.chat.presentation.dto.response.ChatRoomSummaryResponse;
 import com.goods.market.common.auth.AuthPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -47,9 +49,10 @@ public class ChatRoomController {
     public ResponseEntity<ApiResponse<List<ChatRoomSummaryResponse>>> getChatRooms(
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request) {
+        List<ChatRoomSummaryDto> rooms = chatQueryService.getChatRooms(principal.memberId());
 
         return ResponseEntity.ok(ApiResponse.success(
-                chatQueryService.getChatRooms(principal.memberId()),
+                rooms.stream().map(ChatRoomSummaryResponse::from).toList(),
                 request.getRequestURI()
         ));
     }
@@ -60,9 +63,10 @@ public class ChatRoomController {
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request,
             @PathVariable("chat_room_id") Long chatRoomId) {
+        ChatRoomDetailDto room = chatQueryService.getChatRoom(principal.memberId(), chatRoomId);
 
         return ResponseEntity.ok(ApiResponse.success(
-                chatQueryService.getChatRoom(principal.memberId(), chatRoomId),
+                ChatRoomDetailResponse.from(room),
                 request.getRequestURI()
         ));
     }

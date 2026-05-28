@@ -2,6 +2,7 @@ package com.goods.market.trade.presentation;
 
 import com.goods.market.common.api.ApiResponse;
 import com.goods.market.trade.exception.AppointmentBadRequestException;
+import com.goods.market.trade.exception.TradeBadRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,5 +19,14 @@ public class AppointmentExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.failure("APPOINTMENT_BAD_REQUEST", e.getMessage(), null, request.getRequestURI()));
+    }
+
+    @ExceptionHandler(TradeBadRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTradeBadRequest(
+            TradeBadRequestException e,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.failure("TRADE_BAD_REQUEST", e.getMessage(), null, request.getRequestURI()));
     }
 }

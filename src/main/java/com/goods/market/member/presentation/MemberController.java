@@ -5,17 +5,30 @@ import com.goods.market.common.auth.AuthPrincipal;
 import com.goods.market.listing.application.ListingImageStorageService;
 import com.goods.market.member.application.MemberCommandService;
 import com.goods.market.member.application.MemberQueryService;
-import com.goods.market.member.application.dto.MemberRegionResponse;
-import com.goods.market.member.application.dto.MemberResponse;
-import com.goods.market.member.application.dto.MemberSignupCommand;
-import com.goods.market.member.application.dto.ProfileImageUploadResponse;
-import com.goods.market.member.application.dto.MemberUpdateCommand;
+import com.goods.market.member.application.dto.InterestDto;
+import com.goods.market.member.application.dto.MemberDto;
+import com.goods.market.member.presentation.dto.request.MemberUpdateRequest;
 import com.goods.market.member.presentation.dto.request.NicknameRequest;
+import com.goods.market.member.presentation.dto.response.InterestResponse;
+import com.goods.market.member.presentation.dto.response.MemberRegionResponse;
+import com.goods.market.member.presentation.dto.response.MemberResponse;
+import com.goods.market.member.presentation.dto.response.ProfileImageUploadResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -36,7 +49,10 @@ public class MemberController {
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request
     ) {
-        List<MemberRegionResponse> myRegions = memberQueryService.getMyRegions(principal.memberId());
+        List<MemberRegionResponse> myRegions = memberQueryService.getMyRegions(principal.memberId())
+                .stream()
+                .map(MemberRegionResponse::from)
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(myRegions, request.getRequestURI()));
     }
 
@@ -45,15 +61,16 @@ public class MemberController {
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request
     ) {
-        MemberResponse me = memberQueryService.getMe(principal.memberId());
-        return ResponseEntity.ok(ApiResponse.success(me, request.getRequestURI()));
+        MemberDto me = memberQueryService.getMe(principal.memberId());
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.from(me), request.getRequestURI()));
     }
 
     @PatchMapping("/me")
     public ResponseEntity<?> updateMemberInfo(
             @AuthenticationPrincipal AuthPrincipal principal,
-            @RequestBody MemberUpdateCommand command) {
-        memberCommandService.updateMemberInfo(principal.memberId(), command);
+            @RequestBody MemberUpdateRequest request
+    ) {
+        memberCommandService.updateMemberInfo(principal.memberId(), request.toCommand());
         return ResponseEntity.noContent().build();
     }
 
@@ -74,7 +91,8 @@ public class MemberController {
     @PatchMapping("/me/nickname")
     public ResponseEntity<?> updateNickname(
             @AuthenticationPrincipal AuthPrincipal principal,
-            @RequestBody NicknameRequest request) {
+            @RequestBody NicknameRequest request
+    ) {
         memberCommandService.updateNickname(principal.memberId(), request.nickname());
         return ResponseEntity.noContent().build();
     }
@@ -82,7 +100,8 @@ public class MemberController {
     @PutMapping("/me/interests/{listing_id}")
     public ResponseEntity<?> addInterest(
             @AuthenticationPrincipal AuthPrincipal principal,
-            @PathVariable("listing_id") Long listingId) {
+            @PathVariable("listing_id") Long listingId
+    ) {
         memberCommandService.addInterest(principal.memberId(), listingId);
         return ResponseEntity.noContent().build();
     }
@@ -90,7 +109,8 @@ public class MemberController {
     @DeleteMapping("/me/interests/{listing_id}")
     public ResponseEntity<?> deleteInterest(
             @AuthenticationPrincipal AuthPrincipal principal,
-            @PathVariable("listing_id") Long listingId) {
+            @PathVariable("listing_id") Long listingId
+    ) {
         memberCommandService.deleteInterest(principal.memberId(), listingId);
         return ResponseEntity.noContent().build();
     }
@@ -100,20 +120,22 @@ public class MemberController {
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request,
             @RequestParam(required = false) Long lastInterestId,
-            @RequestParam(defaultValue = "20") int size) {
-
+            @RequestParam(defaultValue = "20") int size
+    ) {
         long cursor = lastInterestId == null ? Long.MAX_VALUE : lastInterestId;
+        Slice<InterestDto> interests = memberQueryService.getMyInterests(principal.memberId(), cursor, size);
         return ResponseEntity.ok(ApiResponse.success(
-                memberQueryService.getMyInterests(principal.memberId(), cursor, size),
+                toInterestResponseSlice(interests, size),
                 request.getRequestURI()
         ));
     }
 
     @GetMapping("/me/interests/{listing_id}")
-    public ResponseEntity<ApiResponse<java.util.Map<String, Boolean>>> interestStatus(
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> interestStatus(
             @AuthenticationPrincipal AuthPrincipal principal,
             HttpServletRequest request,
-            @PathVariable("listing_id") Long listingId) {
+            @PathVariable("listing_id") Long listingId
+    ) {
         boolean interested = memberQueryService.isInterested(principal.memberId(), listingId);
         return ResponseEntity.ok(ApiResponse.success(Map.of("interested", interested), request.getRequestURI()));
     }
@@ -124,9 +146,11 @@ public class MemberController {
         return ResponseEntity.noContent().build();
     }
 
-
-
-
-
-
+    private Slice<InterestResponse> toInterestResponseSlice(Slice<InterestDto> slice, int size) {
+        return new SliceImpl<>(
+                slice.getContent().stream().map(InterestResponse::from).toList(),
+                PageRequest.of(0, size),
+                slice.hasNext()
+        );
+    }
 }

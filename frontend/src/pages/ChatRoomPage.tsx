@@ -683,7 +683,7 @@ export function ChatRoomPage() {
         </button>
         <div className="chat-room-header-copy">
           <strong>{room?.partner_nickname ?? "채팅"}</strong>
-          {room ? <span className="chat-room-temp">{formatSmileScore(room.partner_smile_score)}</span> : null}
+          {room ? <span className="chat-room-score">{formatSmileScore(room.partner_smile_score)}</span> : null}
         </div>
         <div className="chat-room-header-actions">
           <button type="button" aria-label="more">

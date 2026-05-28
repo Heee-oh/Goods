@@ -659,16 +659,6 @@ export function ChatRoomPage() {
       );
       setShowCompletionSheet(false);
       setShowReserveConfirm(false);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("goods:review-prompt", {
-            detail: {
-              partner_nickname: room.partner_nickname,
-              listing_title: exchange.listingTitle
-            }
-          })
-        );
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "거래 완료 처리에 실패했습니다.");
     } finally {
@@ -684,7 +674,7 @@ export function ChatRoomPage() {
         </button>
         <div className="chat-room-header-copy">
           <strong>{room?.partner_nickname ?? "채팅"}</strong>
-          {room ? <span className="chat-room-temp">{formatSmileScore(room.partner_smile_score)}</span> : null}
+          {room ? <span className="chat-room-score">{formatSmileScore(room.partner_smile_score)}</span> : null}
         </div>
         <div className="chat-room-header-actions">
           <button type="button" aria-label="more">

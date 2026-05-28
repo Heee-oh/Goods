@@ -1,7 +1,7 @@
 package com.goods.market.listing.application;
 
-import com.goods.market.listing.application.dto.ListingDetailResponse;
-import com.goods.market.listing.application.dto.ListingResponse;
+import com.goods.market.listing.application.dto.ListingDetailDto;
+import com.goods.market.listing.application.dto.ListingItemDto;
 import com.goods.market.listing.domain.Listing;
 import com.goods.market.listing.exception.ListingNotFoundException;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
@@ -39,7 +39,7 @@ public class ListingQueryServiceImpl implements ListingQueryService {
      * 삭제되지 않은 글 상세를 조회한다.
      */
     @Override
-    public ListingDetailResponse getListing(Long listingId, Long viewerMemberId, Integer regionId) {
+    public ListingDetailDto getListing(Long listingId, Long viewerMemberId, Integer regionId) {
         Listing listing = listingJpaRepository.findActiveByIdWithImages(listingId)
                 .orElseThrow(ListingNotFoundException::new);
 
@@ -57,11 +57,11 @@ public class ListingQueryServiceImpl implements ListingQueryService {
                 && interestJpaRepository.existsByListingIdAndMemberId(listingId, viewerMemberId);
         Double distanceKm = resolveDistance(viewerMemberId, regionId, listing);
 
-        return ListingDetailResponse.from(listing, seller, regionName, chatCount, interested, distanceKm);
+        return ListingDetailDto.from(listing, seller, regionName, chatCount, interested, distanceKm);
     }
 
     @Override
-    public Slice<ListingResponse> getListings(Long memberId, Integer regionId, Long lastListingId, String transactionType, Long sellerId) {
+    public Slice<ListingItemDto> getListings(Long memberId, Integer regionId, Long lastListingId, String transactionType, Long sellerId) {
         PageRequest pageRequest = PageRequest.of(0, 20);
 
         MemberRegion originRegion = memberRegionJpaRepository

@@ -1,13 +1,13 @@
 package com.goods.market.chat.application;
 
-import com.goods.market.chat.presentation.dto.ChatRoomDetailResponse;
-import com.goods.market.chat.presentation.dto.ChatRoomSummaryResponse;
+import com.goods.market.chat.application.dto.ChatRoomDetailDto;
+import com.goods.market.chat.application.dto.ChatRoomSummaryDto;
 
 import java.util.List;
 
 public interface ChatQueryService {
 
-    List<ChatRoomSummaryResponse> getChatRooms(Long memberId);
+    List<ChatRoomSummaryDto> getChatRooms(Long memberId);
 
-    ChatRoomDetailResponse getChatRoom(Long memberId, Long chatRoomId);
+    ChatRoomDetailDto getChatRoom(Long memberId, Long chatRoomId);
 }

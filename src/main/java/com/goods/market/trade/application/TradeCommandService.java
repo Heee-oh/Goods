@@ -1,8 +1,8 @@
 package com.goods.market.trade.application;
 
+import com.goods.market.trade.domain.Price;
+
 public interface TradeCommandService {
 
-    Long completeFromListing(Long listingId, Long sellerId, Long buyerId);
-
-    Long complete(Long listingId, Long sellerId, Long buyerId, Long price);
+    Long complete(Long listingId, Long sellerId, Long buyerId, Price price);
 }

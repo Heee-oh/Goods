@@ -8,97 +8,21 @@ import {
   AppointmentInfoPanel,
   type AppointmentInfoPanelHandle
 } from "./AppointmentInfoPanel";
-import { APPOINTMENT_TEXT } from "../lib/appointmentText";
-import { getTransactionLabel, type TransactionType } from "../lib/transactionType";
-
-type ChatMessageItem = {
-  message_id: number | string;
-  sender_id: string;
-  type: "TEXT" | "IMAGE" | "SYSTEM";
-  content: string;
-  created_at: string;
-};
-
-type ChatRoomDetail = {
-  chat_room_id: number | string;
-  listing_id: number | string;
-  listing_first_image: string | null;
-  listing_transaction_type: TransactionType | null;
-  partner_nickname: string;
-  partner_profile_image: string | null;
-  partner_smile_score: number | null;
-  listing_title: string;
-  listing_price: number | null;
-  region_name?: string | null;
-  current_appointment?: {
-    appointment_id: number | string;
-    meet_at: string;
-    reminder_minutes: number | null;
-  } | null;
-  messages: ChatMessageItem[];
-};
-
-type AppointmentResponse = {
-  appointment_id: number | string;
-  meet_at: string;
-  reminder_minutes: number | null;
-};
-
-type SocketMessage = {
-  message_id?: number | string;
-  messageId?: number | string;
-  sender_id?: number | string;
-  senderId?: number | string;
-  type: "TEXT" | "IMAGE" | "SYSTEM";
-  content: string;
-  created_at?: string;
-  createdAt?: string;
-};
-
-type StompClientLike = {
-  connected?: boolean;
-  activate: () => void;
-  deactivate: () => Promise<void> | void;
-  subscribe: (destination: string, callback: (frame: { body: string }) => void) => void;
-  publish: (options: { destination: string; body: string }) => void;
-};
-
-function normalizeSocketMessage(message: SocketMessage): ChatMessageItem {
-  return {
-    message_id: String(message.message_id ?? message.messageId ?? Date.now()),
-    sender_id: String(message.sender_id ?? message.senderId ?? ""),
-    type: message.type,
-    content: message.content,
-    created_at: message.created_at ?? message.createdAt ?? new Date().toISOString()
-  };
-}
-
-function formatMessageTime(value: string) {
-  return new Date(value).toLocaleTimeString("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-}
-
-function formatPrice(price: number | null) {
-  if (price == null) {
-    return "Price unknown";
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`;
-}
-
-function formatListingLabel(price: number | null, transactionType: TransactionType) {
-  if (transactionType !== "sell" || price == null || price === 0) {
-    return getTransactionLabel(transactionType);
-  }
-
-  return `${price.toLocaleString("ko-KR")}원`;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
+import { ChatFloatPill } from "@/features/chat/ChatFloatPill";
+import { ChatFloatingProductPanel } from "@/features/chat/ChatFloatingProductPanel";
+import { ChatFloatingSkeleton } from "@/features/chat/ChatFloatingSkeleton";
+import { ChatMessageList } from "@/features/chat/ChatMessageList";
+import type {
+  AppointmentResponse,
+  ChatRoomDetail,
+  SocketMessage,
+  StompClientLike
+} from "@/features/chat/floatingTypes";
+import {
+  clamp,
+  formatPrice,
+  normalizeSocketMessage
+} from "@/features/chat/floatingUtils";
 
 export type ChatFloatingWindowProps = {
   chatRoomId: string;
@@ -492,13 +416,12 @@ export function ChatFloatingWindow({
 
   if (minimized) {
     return (
-      <div
-        className="chat-float-pill"
-        style={{ left: position.x, top: position.y, zIndex }}
-        role="button"
-        tabIndex={0}
+      <ChatFloatPill
+        title={title}
+        position={position}
+        zIndex={zIndex}
         onPointerDown={handlePillPointerDown}
-        onClick={() => {
+        onRestore={() => {
           if (draggedRef.current) {
             draggedRef.current = false;
             return;
@@ -506,26 +429,8 @@ export function ChatFloatingWindow({
 
           onRestore(chatRoomId);
         }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onRestore(chatRoomId);
-          }
-        }}
-      >
-        <span className="chat-float-pill-name">{title}</span>
-        <button
-          type="button"
-          className="chat-float-pill-close"
-          aria-label="종료"
-          onClick={(event) => {
-            event.stopPropagation();
-            onClose(chatRoomId);
-          }}
-        >
-          ×
-        </button>
-      </div>
+        onClose={() => onClose(chatRoomId)}
+      />
     );
   }
 
@@ -553,66 +458,26 @@ export function ChatFloatingWindow({
 
       <div className="chat-float-body">
         {showLoadingShell ? (
-          <>
-            <section className="chat-float-product chat-float-product-skeleton" aria-hidden="true">
-              <div className="chat-float-product-media chat-float-skeleton-box" />
-              <div className="chat-float-product-copy">
-                <div className="chat-float-skeleton-line chat-float-skeleton-line-title" />
-                <div className="chat-float-skeleton-line chat-float-skeleton-line-price" />
-              </div>
-              <div className="chat-float-skeleton-pill" />
-            </section>
-            <div className="chat-float-messages chat-float-messages-skeleton" aria-hidden="true">
-              <div className="chat-float-message-skeleton mine" />
-              <div className="chat-float-message-skeleton" />
-              <div className="chat-float-message-skeleton mine short" />
-            </div>
-          </>
+          <ChatFloatingSkeleton />
         ) : room ? (
-          <section className="chat-float-product">
-            <div className="chat-float-product-media">
-              {listingImageUrl ? (
-                <img src={listingImageUrl} alt={room.listing_title} />
-              ) : (
-                <div className="chat-float-product-placeholder" />
-              )}
-            </div>
-            <div className="chat-float-product-copy">
-              <strong>{room.listing_title}</strong>
-              <p>{formatListingLabel(room.listing_price, listingTransactionType)}</p>
-            </div>
-            <div className="chat-float-action-wrap" ref={appointmentMenuRef}>
-              <button
-                type="button"
-                className="chat-float-action-toggle"
-                onClick={() => setShowAppointmentMenu((current) => !current)}
-              >
-                <span>{APPOINTMENT_TEXT.quick.label}</span>
-                <span aria-hidden="true">{showAppointmentMenu ? "▴" : "▾"}</span>
-              </button>
-              {showAppointmentMenu ? (
-                <div className="chat-float-action-menu">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAppointmentMenu(false);
-                      if (currentAppointment) {
-                        appointmentInfoRef.current?.openViewer(currentAppointment);
-                        return;
-                      }
+          <ChatFloatingProductPanel
+            room={room}
+            listingImageUrl={listingImageUrl}
+            listingTransactionType={listingTransactionType}
+            showAppointmentMenu={showAppointmentMenu}
+            appointmentMenuRef={appointmentMenuRef}
+            onToggleAppointmentMenu={() => setShowAppointmentMenu((current) => !current)}
+            onOpenAppointment={() => {
+              setShowAppointmentMenu(false);
+              if (currentAppointment) {
+                appointmentInfoRef.current?.openViewer(currentAppointment);
+                return;
+              }
 
-                      appointmentInfoRef.current?.openComposer();
-                    }}
-                  >
-                    {APPOINTMENT_TEXT.quick.openMenu}
-                  </button>
-                  <button type="button" onClick={handleLocationCheck}>
-                    {APPOINTMENT_TEXT.quick.placePrefix} {APPOINTMENT_TEXT.quick.placeSuffix}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </section>
+              appointmentInfoRef.current?.openComposer();
+            }}
+            onLocationCheck={handleLocationCheck}
+          />
         ) : null}
         {room ? (
           <AppointmentInfoPanel
@@ -630,19 +495,7 @@ export function ChatFloatingWindow({
         {error ? <p className="auth-error">{error}</p> : null}
 
         {!loading && !error ? (
-          <div className="chat-float-messages">
-            {(room?.messages ?? []).map((message) => {
-              const mine = memberId != null && String(message.sender_id) === String(memberId);
-              return (
-                <div key={message.message_id} className={mine ? "chat-message-row mine" : "chat-message-row"}>
-                  <div className="chat-message-stack">
-                    <div className={mine ? "chat-message-bubble mine" : "chat-message-bubble"}>{message.content}</div>
-                    <span className="chat-message-time">{formatMessageTime(message.created_at)}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ChatMessageList messages={room?.messages ?? []} memberId={memberId} />
         ) : null}
       </div>
 

@@ -2,7 +2,7 @@ package com.goods.market.listing.integration;
 
 import com.goods.market.listing.application.ListingCommandService;
 import com.goods.market.listing.application.ListingQueryService;
-import com.goods.market.listing.application.dto.ListingDetailResponse;
+import com.goods.market.listing.application.dto.ListingDetailDto;
 import com.goods.market.listing.application.dto.ListingUpdateCommand;
 import com.goods.market.listing.domain.Listing;
 import com.goods.market.listing.domain.Status;
@@ -67,7 +67,7 @@ class ListingServiceIntegrationTest {
                 List.of("https://img/1.png", "https://img/2.png")
         ));
 
-        ListingDetailResponse detail = listingQueryService.getListing(listingId, 100L);
+        ListingDetailDto detail = listingQueryService.getListing(listingId, 100L);
 
         assertThat(detail.listingId()).isEqualTo(listingId);
         assertThat(detail.sellerId()).isEqualTo(100L);

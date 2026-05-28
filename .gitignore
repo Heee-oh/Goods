@@ -1,5 +1,6 @@
 *.md
 !README.md
+/docs/
 
 HELP.md
 .gradle
@@ -43,6 +44,7 @@ postgres_data/
 /build
 
 frontend/node_modules/
+Frontend-next/node_modules/
 
 /uploads/
 
@@ -51,3 +53,5 @@ frontend/node_modules/
 backup.sql
 
 .gradle-user/
+
+/project/

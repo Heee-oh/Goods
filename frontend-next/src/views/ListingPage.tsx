@@ -1,364 +1,45 @@
-﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "@/lib/nextRouterCompat";
-import type { ChangeEvent, MutableRefObject, ReactNode, RefObject } from "react";
+import type { ChangeEvent } from "react";
 import { ApiError, apiRequest } from "../lib/api";
 import { convertImageToWebpFile } from "../lib/image";
-import { clearSession, getMemberId, getSelectedRegionId, saveSelectedRegionId } from "../lib/auth";
+import { clearSession, getMemberId, getSelectedRegionId } from "../lib/auth";
 import { readCachedJson, writeCachedJson } from "../lib/cache";
-import {
-  getListingStatusLabel,
-  getListingStatusTone,
-  shouldShowStatusBadge
-} from "../lib/listingStatus";
-import { getTransactionLabel, type TransactionType } from "../lib/transactionType";
+import { getTransactionLabel } from "../lib/transactionType";
 import { Spinner } from "@/components/ui/spinner";
-
-type RegionResponse = {
-  region_id: number;
-  dongnm: string;
-  verified_at?: string | null;
-  is_primary?: boolean;
-  primary?: boolean;
-};
-
-type RegionSearchItem = {
-  region_id: number;
-  full_name: string;
-  dongnm: string;
-};
-
-type MemberResponse = {
-  nickname?: string;
-  profile_image?: string | null;
-  ProfileImage?: string | null;
-  smile_score?: number;
-  smileScore?: number;
-};
-
-type ListingItem = {
-  listing_id: number;
-  interest_id?: number;
-  title: string;
-  price_amount: number;
-  transaction_type: TransactionType;
-  status: "DRAFT" | "PUBLISHED" | "RESERVED" | "SOLD_OUT";
-  dongnm: string;
-  chat_cnt: number;
-  first_image: string | null;
-  updated_at: string;
-  distance_km?: number | null;
-  distanceKm?: number | null;
-};
-
-type WishlistListingItem = ListingItem & {
-  interest_id: number;
-};
-
-type ListingSliceResponse = {
-  content: ListingItem[];
-};
-
-type PublishedListingState = {
-  refreshAt?: number;
-  publishedListingId?: number;
-};
-
-type RailIndicatorState = {
-  top: number;
-  height: number;
-  visible: boolean;
-  animate: boolean;
-};
+import { REGIONS_CACHE_PREFIX } from "@/features/listing/constants";
+import { ListingCardList } from "@/features/listing/ListingCardList";
+import { ListingDesktopTopbar } from "@/features/listing/ListingDesktopTopbar";
+import { ListingFeedFilters } from "@/features/listing/ListingFeedFilters";
+import { ListingLeftRail } from "@/features/listing/ListingLeftRail";
+import { ProfileInlinePanel } from "@/features/listing/ProfileInlinePanel";
+import { RegionDeleteConfirm } from "@/features/listing/RegionDeleteConfirm";
+import { RegionPopover } from "@/features/listing/RegionPopover";
+import { RegionSearchLayer } from "@/features/listing/RegionSearchLayer";
+import { ReviewHistoryPanel } from "@/features/listing/ReviewHistoryPanel";
+import { TradeHistoryPanel } from "@/features/listing/TradeHistoryPanel";
+import type {
+  FeedPath,
+  InterestSliceResponse,
+  ListingDetailPreview,
+  ListingItem,
+  ListingSliceResponse,
+  MemberResponse,
+  PublishedListingState,
+  RailIndicatorState,
+  RegionResponse,
+  RegionSearchItem,
+  WishlistListingItem
+} from "@/features/listing/types";
+import {
+  formatPrice,
+  formatSmileScore,
+  normalizeRegion,
+  pickInitialRegion,
+  saveSelectedRegion
+} from "@/features/listing/utils";
 
 let lastRailIndicatorPosition: Pick<RailIndicatorState, "top" | "height"> | null = null;
-
-const REGIONS_CACHE_PREFIX = "goods:member-regions";
-
-type InterestResponse = {
-  id: number;
-  listingId?: number;
-  listing_id?: number;
-};
-
-type InterestSliceResponse = {
-  content: InterestResponse[];
-  last?: boolean;
-};
-
-type ListingDetailPreview = {
-  listing_id: number;
-  seller_id?: number | string | null;
-  title: string;
-  price_amount: number | null;
-  transaction_type: TransactionType;
-  status: "DRAFT" | "PUBLISHED" | "RESERVED" | "SOLD_OUT";
-  region_name: string | null;
-  chat_count: number;
-  images: Array<{
-    image_url: string;
-    sort_order: number;
-  }>;
-  distance_km?: number | null;
-  distanceKm?: number | null;
-  updated_at: string;
-};
-
-const desktopMarketplace = ["Home Feed", "Trading Hub", "My Collection"];
-const desktopMyPageLinks = [
-  { label: "Wishlist", path: "/wishlist" },
-  { label: "Profile", path: "/profile" }
-] as const;
-const desktopCategories = ["Anime Figures", "Idol Photocards", "Limited Merch", "Plushies"];
-const desktopTrades = ["Waiting on @kuro", "Meetup Today"];
-const desktopFilters = ["All", "WTT (Trade)", "WTS (Sell)"];
-const feedFilters = [
-  { id: "all", label: "전체" },
-  { id: "selling", label: "판매중" },
-  { id: "reserved", label: "예약중" },
-  { id: "free", label: "나눔" },
-  { id: "chats", label: "채팅 있음" }
-] as const;
-const tradeFilters = [
-  { id: "all", label: "전체" },
-  { id: "trade", label: "교환중" },
-  { id: "reserved", label: "예약중" },
-  { id: "chats", label: "채팅 있음" }
-] as const;
-const SELECTED_REGION_COOKIE = "goods-selected-region";
-
-function saveSelectedRegion(region: RegionResponse) {
-  const snapshot = encodeURIComponent(
-    JSON.stringify({
-      region_id: region.region_id,
-      dongnm: region.dongnm,
-      verified_at: region.verified_at ?? null,
-      primary: Boolean(region.primary ?? region.is_primary)
-    })
-  );
-
-  document.cookie = `${SELECTED_REGION_COOKIE}=${snapshot}; Path=/; Max-Age=31536000; SameSite=Lax`;
-  saveSelectedRegionId(region.region_id);
-}
-
-type FeedPath = "/listing" | "/trading" | "/my-listings" | "/wishlist" | "/profile";
-
-const ListingLeftRail = memo(function ListingLeftRail({
-  leftRailRef,
-  marketplaceItemRefs,
-  myPageItemRefs,
-  railIndicator,
-  isTradingHub,
-  isMyCollection,
-  isWishlist,
-  isProfile,
-  onOpenFeedPage
-}: {
-  leftRailRef: RefObject<HTMLElement | null>;
-  marketplaceItemRefs: MutableRefObject<Array<HTMLButtonElement | null>>;
-  myPageItemRefs: MutableRefObject<Array<HTMLButtonElement | null>>;
-  railIndicator: RailIndicatorState;
-  isTradingHub: boolean;
-  isMyCollection: boolean;
-  isWishlist: boolean;
-  isProfile: boolean;
-  onOpenFeedPage: (path: FeedPath) => void;
-}) {
-  return (
-    <aside className="listing-left-rail" ref={leftRailRef}>
-      <span
-        aria-hidden="true"
-        className={railIndicator.animate ? "listing-rail-indicator" : "listing-rail-indicator no-motion"}
-        style={{
-          opacity: railIndicator.visible ? 1 : 0,
-          transform: `translate3d(0, ${railIndicator.top}px, 0)`,
-          height: `${railIndicator.height}px`
-        }}
-      />
-      <div className="listing-brand-row">
-        <span className="listing-brand-mark">T</span>
-        <strong>TORA KAZE</strong>
-      </div>
-
-      <div className="listing-rail-group">
-        <span className="listing-rail-label">MARKETPLACE</span>
-        <div className="listing-rail-stack">
-          {desktopMarketplace.map((item, index) => (
-            <button
-              key={item}
-              ref={(node) => {
-                marketplaceItemRefs.current[index] = node;
-              }}
-              type="button"
-              className={
-                (index === 0 && !isTradingHub && !isMyCollection && !isWishlist && !isProfile) ||
-                (index === 1 && isTradingHub) ||
-                (index === 2 && isMyCollection)
-                  ? "listing-rail-item active"
-                  : "listing-rail-item"
-              }
-              onClick={() => onOpenFeedPage(index === 1 ? "/trading" : index === 2 ? "/my-listings" : "/listing")}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="listing-rail-group">
-        <span className="listing-rail-label">MY PAGE</span>
-        <div className="listing-rail-stack">
-          {desktopMyPageLinks.map((item, index) => (
-            <button
-              key={item.path}
-              ref={(node) => {
-                myPageItemRefs.current[index] = node;
-              }}
-              type="button"
-              className={
-                (item.path === "/wishlist" && isWishlist) || (item.path === "/profile" && isProfile)
-                  ? "listing-rail-item active"
-                  : "listing-rail-item"
-              }
-              onClick={() => onOpenFeedPage(item.path)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="listing-rail-group">
-        <span className="listing-rail-label">CATEGORIES</span>
-        {desktopCategories.map((item) => (
-          <button key={item} type="button" className="listing-rail-item">
-            {item}
-          </button>
-        ))}
-      </div>
-
-      <div className="listing-rail-group">
-        <span className="listing-rail-label">ACTIVE TRADES</span>
-        {desktopTrades.map((item, index) => (
-          <button key={item} type="button" className="listing-rail-item trade">
-            <span>{item}</span>
-            {index === 0 ? <em>1</em> : null}
-          </button>
-        ))}
-      </div>
-    </aside>
-  );
-});
-
-const ListingDesktopTopbar = memo(function ListingDesktopTopbar({
-  selectedRegionName,
-  selectedRegionVerified,
-  regionPopover,
-  onOpenRegionSheet
-}: {
-  selectedRegionName: string;
-  selectedRegionVerified: boolean;
-  regionPopover: ReactNode;
-  onOpenRegionSheet: () => void;
-}) {
-  return (
-    <header className="listing-desktop-topbar">
-      <div className="listing-region-menu">
-        <button type="button" className="listing-region-chip" onClick={onOpenRegionSheet}>
-          <span className="listing-region-chip-label">내 지역</span>
-          <strong>{selectedRegionName}</strong>
-          <em>{selectedRegionVerified ? "인증됨" : "인증 필요"}</em>
-        </button>
-        {regionPopover}
-      </div>
-      <div className="listing-search-shell">
-        <input type="text" readOnly placeholder="Search photocard, figures, tags..." />
-      </div>
-    </header>
-  );
-});
-
-const tradeMessages = [
-  {
-    mine: false,
-    text: "Hi! I saw you have the Radio EVA Asuka. Would you trade for my Miku?"
-  },
-  {
-    mine: true,
-    text: "Hey! Yes, I'v筠 been looking for that one. Is the box included?"
-  },
-  {
-    mine: false,
-    text: "Yep, completely unopened. Box is 9/10. Are you local to downtown?"
-  }
-];
-
-function formatPrice(amount: number, transactionType: TransactionType) {
-  if (transactionType === "free") {
-    return "\uB098\uB214";
-  }
-
-  if (transactionType === "trade") {
-    return "\uAD50\uD658";
-  }
-
-  return `${amount.toLocaleString("ko-KR")}\uC6D0`;
-}
-
-function formatUpdatedAt(value: string) {
-  const updatedAt = new Date(value);
-  const diffMinutes = Math.max(1, Math.floor((Date.now() - updatedAt.getTime()) / 60000));
-
-  if (diffMinutes < 60) {
-    return `${diffMinutes}\uBD84 \uC804`;
-  }
-
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours}\uC2DC\uAC04 \uC804`;
-  }
-
-  return `${Math.floor(diffHours / 24)}\uC77C \uC804`;
-}
-
-function formatDistance(value: number | null | undefined) {
-  if (value == null || Number.isNaN(Number(value))) {
-    return null;
-  }
-
-  const distance = Number(value);
-  return distance < 1 ? `${Math.max(100, Math.round(distance * 1000))}m` : `${distance.toFixed(1)}km`;
-}
-
-function Thumbnail({ imageUrl, tone }: { imageUrl: string | null; tone: string }) {
-  if (imageUrl) {
-    return <img className={`listing-thumb real-image ${tone}`} src={imageUrl} alt="" />;
-  }
-
-  return <div className={`listing-thumb ${tone}`} />;
-}
-
-function formatSmileScore(value: number | null | undefined) {
-  return `${((Number(value ?? 100) / 10)).toFixed(1)}점`;
-}
-
-function normalizeRegion(region: RegionResponse): RegionResponse {
-  return {
-    ...region,
-    primary: Boolean(region.is_primary ?? region.primary),
-    verified_at: region.verified_at ?? null
-  };
-}
-
-function pickInitialRegion(regions: RegionResponse[], savedRegionId: number | null) {
-  return (
-    regions.find((region) => region.region_id === savedRegionId && region.verified_at) ??
-    regions.find((region) => region.primary && region.verified_at) ??
-    regions.find((region) => region.verified_at) ??
-    regions.find((region) => region.region_id === savedRegionId) ??
-    regions[0] ??
-    null
-  );
-}
 
 type ListingPageProps = {
   tradeRailOpen?: boolean;
@@ -371,7 +52,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   const isTradingHub = location.pathname.startsWith("/trading");
   const isMyCollection = location.pathname.startsWith("/my-listings");
   const isWishlist = location.pathname.startsWith("/wishlist");
+  const isSalesHistory = location.pathname.startsWith("/sales-history");
+  const isPurchaseHistory = location.pathname.startsWith("/purchase-history");
+  const isReceivedReviews = location.pathname.startsWith("/received-reviews");
   const isProfile = location.pathname.startsWith("/profile");
+  const isMyPageSection = isWishlist || isSalesHistory || isPurchaseHistory || isReceivedReviews || isProfile;
   const leftRailRef = useRef<HTMLElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const profileFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -420,8 +105,8 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   const railIndicatorMeasuredRef = useRef(Boolean(lastRailIndicatorPosition));
   const profileSmileValue = Number(me?.smile_score ?? me?.smileScore ?? 100);
   const profileSmileProgress = Math.max(0, Math.min(100, profileSmileValue / 10));
-  const marketplaceActiveIndex = !isTradingHub && !isMyCollection && !isWishlist && !isProfile ? 0 : isTradingHub ? 1 : isMyCollection ? 2 : -1;
-  const myPageActiveIndex = isWishlist ? 0 : isProfile ? 1 : -1;
+  const marketplaceActiveIndex = !isTradingHub && !isMyCollection && !isMyPageSection ? 0 : isTradingHub ? 1 : isMyCollection ? 2 : -1;
+  const myPageActiveIndex = isWishlist ? 0 : isSalesHistory ? 1 : isPurchaseHistory ? 2 : isReceivedReviews ? 3 : isProfile ? 4 : -1;
 
   useEffect(() => {
     const sync = () => {
@@ -501,7 +186,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   };
 
   const fetchListings = async (regionId: number, lastListingId?: number, append = false) => {
-    if (isProfile) {
+    if (isProfile || isSalesHistory || isPurchaseHistory || isReceivedReviews) {
       setListings([]);
       setHasMore(false);
       return;
@@ -566,7 +251,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   };
 
   const loadCurrentFeed = async (regionId?: number, cursorId?: number, append = false) => {
-    if (isProfile) {
+    if (isProfile || isSalesHistory || isPurchaseHistory || isReceivedReviews) {
       setListings([]);
       setHasMore(false);
       return;
@@ -642,7 +327,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   };
 
   const filteredListings = useMemo(() => {
-    if (isProfile) {
+    if (isProfile || isSalesHistory || isPurchaseHistory || isReceivedReviews) {
       return [];
     }
 
@@ -675,83 +360,22 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
           return true;
       }
     });
-  }, [activeFeedFilter, isMyCollection, isTradingHub, isWishlist, isProfile, listings]);
+  }, [
+    activeFeedFilter,
+    isMyCollection,
+    isTradingHub,
+    isWishlist,
+    isProfile,
+    isSalesHistory,
+    isPurchaseHistory,
+    isReceivedReviews,
+    listings
+  ]);
 
   const isInitialListingLoading = loading && filteredListings.length === 0;
   const isProfileLoading = isProfile && loading && me == null;
   const hasFilteredData = filteredListings.length > 0;
   const showFilteredEmptyState = !loading && filteredListings.length === 0;
-
-  const renderListingCards = (items: ListingItem[]) => (
-    <section className="listing-list">
-      {items.map((item, index) => {
-        const distanceLabel = formatDistance(item.distance_km ?? item.distanceKm);
-
-        return (
-        <article
-          key={item.listing_id}
-          className="listing-card"
-          onClick={() => openListingDetail(item.listing_id)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              openListingDetail(item.listing_id);
-            }
-          }}
-        >
-          <Thumbnail
-            imageUrl={item.first_image}
-            tone={["sunset", "olive", "midnight", "sand"][index % 4]}
-          />
-          <div className="listing-copy">
-            <div className="listing-row">
-              <h3>{item.title}</h3>
-              <button type="button" className="more-button" aria-label="more">
-                {"\u22EE"}
-              </button>
-            </div>
-            <p className="listing-sub">
-              {item.dongnm}
-              {distanceLabel ? ` \u00B7 ${distanceLabel}` : ""}
-              {" \u00B7 "}
-              {formatUpdatedAt(item.updated_at)}
-            </p>
-            <div className="listing-price-row">
-              {shouldShowStatusBadge(item.status) ? (
-                <span className={`listing-status-badge ${getListingStatusTone(item.status)}`}>
-                  {getListingStatusLabel(item.status, item.transaction_type)}
-                </span>
-              ) : null}
-              <strong>{formatPrice(item.price_amount, item.transaction_type)}</strong>
-            </div>
-            <div className="listing-meta">
-              {item.chat_cnt > 0 ? <span>{`\uCC44\uD305 ${item.chat_cnt}`}</span> : null}
-            </div>
-          </div>
-        </article>
-        );
-      })}
-    </section>
-  );
-
-  const renderFeedFilters = () => (
-    isWishlist || isProfile ? null : (
-    <div className="listing-feed-filters" aria-label="세부 필터">
-      {(isTradingHub ? tradeFilters : feedFilters).map((filter) => (
-        <button
-          key={filter.id}
-          type="button"
-          className={activeFeedFilter === filter.id ? "listing-feed-filter active" : "listing-feed-filter"}
-          onClick={() => setActiveFeedFilter(filter.id)}
-        >
-          {filter.label}
-        </button>
-      ))}
-    </div>
-    )
-  );
 
   useEffect(() => {
     const load = async () => {
@@ -799,6 +423,9 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
                 setMe(null);
               });
             }
+          } else if (isSalesHistory || isPurchaseHistory || isReceivedReviews) {
+            setListings([]);
+            setHasMore(false);
           } else {
             await loadCurrentFeed(initialRegion.region_id);
           }
@@ -819,11 +446,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     };
 
     void load();
-  }, [navigate, isTradingHub, isWishlist, isProfile]);
+  }, [navigate, isTradingHub, isWishlist, isProfile, isSalesHistory, isPurchaseHistory, isReceivedReviews]);
 
   useEffect(() => {
     const { refreshAt, publishedListingId } = (location.state as PublishedListingState | null) ?? {};
-    if (!refreshAt || loading || (!selectedRegionId && !isWishlist) || isProfile) {
+    if (!refreshAt || loading || (!selectedRegionId && !isWishlist) || (isMyPageSection && !isWishlist)) {
       return;
     }
 
@@ -837,11 +464,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
         setError(err instanceof Error ? err.message : "Failed to load listings.");
       }
     })();
-  }, [location.state, loading, selectedRegionId, isTradingHub, isWishlist, isProfile]);
+  }, [location.state, loading, selectedRegionId, isTradingHub, isWishlist, isMyPageSection]);
 
   useEffect(() => {
     setActiveFeedFilter("all");
-  }, [isTradingHub, isWishlist, isProfile]);
+  }, [isTradingHub, isWishlist, isProfile, isSalesHistory, isPurchaseHistory, isReceivedReviews]);
 
   useEffect(() => {
     if (!regionSearchOpen) {
@@ -875,7 +502,14 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   }, [regionSearchOpen, regionSearchQuery]);
 
   useEffect(() => {
-    if ((!selectedRegionId && !isWishlist) || !loadMoreRef.current || loading || loadingMore || !hasMore || isProfile) {
+    if (
+      (!selectedRegionId && !isWishlist) ||
+      !loadMoreRef.current ||
+      loading ||
+      loadingMore ||
+      !hasMore ||
+      (isMyPageSection && !isWishlist)
+    ) {
       return;
     }
 
@@ -906,7 +540,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     observer.observe(loadMoreRef.current);
 
     return () => observer.disconnect();
-  }, [selectedRegionId, listings, loading, loadingMore, hasMore, isWishlist, isProfile]);
+  }, [selectedRegionId, listings, loading, loadingMore, hasMore, isWishlist, isMyPageSection]);
 
   const selectedRegion = useMemo(
     () => regions.find((region) => region.region_id === selectedRegionId) ?? null,
@@ -920,11 +554,29 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
       ? formatPrice(highlightedListing.price_amount, highlightedListing.transaction_type)
       : getTransactionLabel(highlightedListing.transaction_type)
     : "";
-  const feedTitle = isProfile ? "Profile" : isWishlist ? "Wishlist" : isTradingHub ? "Trading Hub" : "Recommended Matches";
+  const feedTitle = isProfile
+    ? "Profile"
+    : isWishlist
+      ? "Wishlist"
+      : isSalesHistory
+        ? "판매 기록"
+        : isPurchaseHistory
+          ? "구매 기록"
+          : isReceivedReviews
+            ? "받은 리뷰"
+            : isTradingHub
+              ? "Trading Hub"
+              : "Recommended Matches";
   const feedSummary = isWishlist
     ? `${filteredListings.length}개의 저장한 굿즈`
     : isProfile
       ? `${me?.nickname?.trim() || "내 프로필"} · 스마일지수 ${formatSmileScore(me?.smile_score ?? me?.smileScore ?? 100)}`
+      : isSalesHistory
+        ? "거래 완료된 판매 내역을 확인할 수 있어요."
+        : isPurchaseHistory
+          ? "구매한 거래 내역을 확인할 수 있어요."
+          : isReceivedReviews
+            ? "상대방이 남긴 후기를 모아볼 수 있어요."
       : isTradingHub
         ? "교환 게시글을 보고 있어요."
         : isMyCollection
@@ -960,66 +612,6 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     } finally {
       setLoading(false);
     }
-  };
-
-  const renderRegionPopover = () => {
-    if (!regionSheetOpen) {
-      return null;
-    }
-
-    return (
-      <div className="region-popover">
-        <div className="region-popover-pointer" />
-        <h2>{"지역 인증"}</h2>
-        <p>{"현재 위치로 지역을 추가하고 인증할 수 있어요."}</p>
-
-        <div className="region-sheet-list">
-          {regions.map((region) => (
-            <div key={region.region_id} className="region-sheet-item">
-              <button
-                type="button"
-                className="region-sheet-select"
-                onClick={() => void handleSelectRegion(region.region_id)}
-              >
-                <span className={region.region_id === selectedRegionId ? "region-radio active" : "region-radio"} />
-                <span>{region.dongnm}</span>
-                <span className={region.verified_at ? "region-sheet-state" : "region-sheet-state pending"}>
-                  {region.verified_at ? "인증됨" : "인증 필요"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={regions.length <= 1 ? "region-remove disabled" : "region-remove"}
-                onClick={() => setDeleteTarget(region)}
-                disabled={regions.length <= 1}
-                aria-label={`${region.dongnm} 삭제`}
-              >
-                {"\u00D7"}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {canAddRegion ? (
-          <button
-            type="button"
-            className="region-add-button"
-            onClick={() => {
-                setRegionSearchQuery("");
-                setRegionSearchResults([]);
-                setRegionSearchLoading(false);
-                setRegionSearchMessage("");
-                setRegionSearchOpen(true);
-                setRegionSheetOpen(false);
-              }}
-          >
-            {"+ 지역 추가"}
-          </button>
-        ) : (
-          <p className="region-limit-note">{"이미 2개라면 더 이상 추가할 수 없어요."}</p>
-        )}
-      </div>
-    );
   };
 
   const handleDeleteRegion = async () => {
@@ -1237,6 +829,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     profileFileInputRef.current?.click();
   };
 
+  const handleLogout = () => {
+    clearSession();
+    navigate("/welcome", { replace: true });
+  };
+
   const handleWriteClick = () => {
     navigate("/sell", { state: { backgroundLocation: location } });
   };
@@ -1251,10 +848,49 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     setRegionSheetOpen(true);
   }, []);
 
+  const openRegionSearch = useCallback(() => {
+    setRegionSearchQuery("");
+    setRegionSearchResults([]);
+    setRegionSearchLoading(false);
+    setRegionSearchMessage("");
+    setRegionSearchOpen(true);
+    setRegionSheetOpen(false);
+  }, []);
+
+  const closeRegionSearchToSheet = useCallback(() => {
+    setRegionSearchMessage("");
+    setRegionSearchOpen(false);
+    setRegionSheetOpen(true);
+  }, []);
+
   const openListingDetail = (listingId: number) => {
-    const basePath = isTradingHub ? "/trading" : isMyCollection ? "/my-listings" : isWishlist ? "/wishlist" : "/listing";
+    const basePath = isTradingHub
+      ? "/trading"
+      : isMyCollection
+        ? "/my-listings"
+        : isWishlist
+          ? "/wishlist"
+          : isSalesHistory
+            ? "/sales-history"
+            : isPurchaseHistory
+              ? "/purchase-history"
+              : isReceivedReviews
+                ? "/received-reviews"
+                : "/listing";
     navigate(`${basePath}/${listingId}`, { state: { backgroundLocation: location } });
   };
+
+  const regionPopover = (
+    <RegionPopover
+      open={regionSheetOpen}
+      regions={regions}
+      selectedRegionId={selectedRegionId}
+      canAddRegion={canAddRegion}
+      onSelectRegion={(regionId) => void handleSelectRegion(regionId)}
+      onRequestDelete={setDeleteTarget}
+      onOpenRegionSearch={openRegionSearch}
+    />
+  );
 
   return (
     <div className="page page-listing">
@@ -1267,6 +903,9 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
           isTradingHub={isTradingHub}
           isMyCollection={isMyCollection}
           isWishlist={isWishlist}
+          isSalesHistory={isSalesHistory}
+          isPurchaseHistory={isPurchaseHistory}
+          isReceivedReviews={isReceivedReviews}
           isProfile={isProfile}
           onOpenFeedPage={openFeedPage}
         />
@@ -1275,7 +914,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
             <ListingDesktopTopbar
               selectedRegionName={selectedRegion?.dongnm ?? "지역 선택"}
               selectedRegionVerified={Boolean(selectedRegion?.verified_at)}
-              regionPopover={renderRegionPopover()}
+              regionPopover={regionPopover}
               onOpenRegionSheet={openRegionSheet}
             />
 
@@ -1294,71 +933,41 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
                     <h1>{feedTitle}</h1>
                   </div>
 
-                  {renderFeedFilters()}
+                  <ListingFeedFilters
+                    activeFilter={activeFeedFilter}
+                    isTradingHub={isTradingHub}
+                    hideFilters={isMyPageSection}
+                    onChangeFilter={setActiveFeedFilter}
+                  />
                   <p className="listing-feed-summary">{feedSummary}</p>
 
                   {error ? <p className="auth-error">{error}</p> : null}
 
                   {isProfile ? (
-                    <section className="profile-inline-shell">
-                      <input
-                        ref={profileFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="profile-file-input"
-                        onChange={(event) => void handleProfileImageInput(event)}
-                      />
-
-                      <section className="profile-avatar-section">
-                        <div className="profile-avatar-wrap">
-                          <div className="profile-avatar-circle">
-                            {profileImageDraft ? (
-                              <img src={profileImageDraft} alt={me?.nickname?.trim() || "내 프로필"} />
-                            ) : (
-                              <span>{(me?.nickname?.trim() || "나").slice(0, 1).toUpperCase()}</span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            className="profile-avatar-hover"
-                            onClick={openProfileImagePicker}
-                            disabled={profileUploading}
-                          >
-                            {profileUploading ? "업로드 중.." : "이미지 변경"}
-                          </button>
-                        </div>
-                        <p className="profile-avatar-hint">마우스를 올리면 이미지를 바꿀 수 있어요.</p>
-                      </section>
-
-                      <section className="profile-smile-section">
-                        <div className="profile-smile-head">
-                          <strong>스마일 지수</strong>
-                          <span>{formatSmileScore(profileSmileValue)}</span>
-                        </div>
-                        <div className="profile-smile-track" aria-hidden="true">
-                          <div className="profile-smile-fill" style={{ width: `${profileSmileProgress}%` }} />
-                        </div>
-                        <p>100점 만점 기준으로 표시됩니다.</p>
-                      </section>
-
-                      <section className="profile-nickname-block">
-                        <label htmlFor="profile-nickname">닉네임</label>
-                        <div className="profile-nickname-row">
-                          <input
-                            id="profile-nickname"
-                            type="text"
-                            value={profileNicknameDraft}
-                            onChange={(event) => setProfileNicknameDraft(event.target.value)}
-                            placeholder="닉네임을 입력하세요"
-                          />
-                          <button type="button" onClick={() => void handleProfileNicknameSave()} disabled={profileSaving}>
-                            {profileSaving ? "저장 중.." : "변경"}
-                          </button>
-                        </div>
-                      </section>
-                    </section>
+                    <ProfileInlinePanel
+                      fileInputRef={profileFileInputRef}
+                      nicknameInputId="profile-nickname-desktop"
+                      nickname={me?.nickname?.trim() || "나"}
+                      profileImage={profileImageDraft}
+                      profileUploading={profileUploading}
+                      profileSaving={profileSaving}
+                      nicknameDraft={profileNicknameDraft}
+                      smileValue={profileSmileValue}
+                      smileProgress={profileSmileProgress}
+                      onImageInput={(event) => void handleProfileImageInput(event)}
+                      onOpenImagePicker={openProfileImagePicker}
+                      onNicknameDraftChange={setProfileNicknameDraft}
+                      onNicknameSave={() => void handleProfileNicknameSave()}
+                      onLogout={handleLogout}
+                    />
+                  ) : isSalesHistory ? (
+                    <TradeHistoryPanel mode="sales" />
+                  ) : isPurchaseHistory ? (
+                    <TradeHistoryPanel mode="purchases" />
+                  ) : isReceivedReviews ? (
+                    <ReviewHistoryPanel />
                   ) : hasFilteredData ? (
-                    renderListingCards(filteredListings)
+                    <ListingCardList items={filteredListings} onOpenListingDetail={openListingDetail} />
                   ) : showFilteredEmptyState ? (
                     <p className="region-status">필터에 맞는 굿즈가 없어요.</p>
                   ) : null}
@@ -1396,7 +1005,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
               <em>{selectedRegion?.verified_at ? "인증됨" : "인증 필요"}</em>
               <span className="chevron">&#x2304;</span>
             </button>
-            {renderRegionPopover()}
+            {regionPopover}
           </div>
           <div className="top-actions">
             <button type="button" aria-label="menu">
@@ -1417,7 +1026,12 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
           <button type="button" className="category-pill">{"\uC911\uACE0\uCC28"}</button>
         </section>
 
-        {renderFeedFilters()}
+        <ListingFeedFilters
+          activeFilter={activeFeedFilter}
+          isTradingHub={isTradingHub}
+          hideFilters={isMyPageSection}
+          onChangeFilter={setActiveFeedFilter}
+        />
 
         {isBootLoading ? (
           <section
@@ -1430,65 +1044,30 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
           <>
             {error ? <p className="auth-error">{error}</p> : null}
             {isProfile ? (
-              <section className="profile-inline-shell">
-                <input
-                  ref={profileFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="profile-file-input"
-                  onChange={(event) => void handleProfileImageInput(event)}
-                />
-
-                <section className="profile-avatar-section">
-                  <div className="profile-avatar-wrap">
-                    <div className="profile-avatar-circle">
-                      {profileImageDraft ? (
-                        <img src={profileImageDraft} alt={me?.nickname?.trim() || "내 프로필"} />
-                      ) : (
-                        <span>{(me?.nickname?.trim() || "나").slice(0, 1).toUpperCase()}</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="profile-avatar-hover"
-                      onClick={openProfileImagePicker}
-                      disabled={profileUploading}
-                    >
-                      {profileUploading ? "업로드 중.." : "이미지 변경"}
-                    </button>
-                  </div>
-                  <p className="profile-avatar-hint">마우스를 올리면 이미지를 바꿀 수 있어요.</p>
-                </section>
-
-                <section className="profile-smile-section">
-                  <div className="profile-smile-head">
-                    <strong>스마일 지수</strong>
-                    <span>{formatSmileScore(profileSmileValue)}</span>
-                  </div>
-                  <div className="profile-smile-track" aria-hidden="true">
-                    <div className="profile-smile-fill" style={{ width: `${profileSmileProgress}%` }} />
-                  </div>
-                  <p>100점 만점 기준으로 표시됩니다.</p>
-                </section>
-
-                <section className="profile-nickname-block">
-                  <label htmlFor="profile-nickname">닉네임</label>
-                  <div className="profile-nickname-row">
-                    <input
-                      id="profile-nickname"
-                      type="text"
-                      value={profileNicknameDraft}
-                      onChange={(event) => setProfileNicknameDraft(event.target.value)}
-                      placeholder="닉네임을 입력하세요"
-                    />
-                    <button type="button" onClick={() => void handleProfileNicknameSave()} disabled={profileSaving}>
-                      {profileSaving ? "저장 중.." : "변경"}
-                    </button>
-                  </div>
-                </section>
-              </section>
+              <ProfileInlinePanel
+                fileInputRef={profileFileInputRef}
+                nicknameInputId="profile-nickname-mobile"
+                nickname={me?.nickname?.trim() || "나"}
+                profileImage={profileImageDraft}
+                profileUploading={profileUploading}
+                profileSaving={profileSaving}
+                nicknameDraft={profileNicknameDraft}
+                smileValue={profileSmileValue}
+                smileProgress={profileSmileProgress}
+                onImageInput={(event) => void handleProfileImageInput(event)}
+                onOpenImagePicker={openProfileImagePicker}
+                onNicknameDraftChange={setProfileNicknameDraft}
+                onNicknameSave={() => void handleProfileNicknameSave()}
+                onLogout={handleLogout}
+              />
+            ) : isSalesHistory ? (
+              <TradeHistoryPanel mode="sales" />
+            ) : isPurchaseHistory ? (
+              <TradeHistoryPanel mode="purchases" />
+            ) : isReceivedReviews ? (
+              <ReviewHistoryPanel />
             ) : hasFilteredData ? (
-              renderListingCards(filteredListings)
+              <ListingCardList items={filteredListings} onOpenListingDetail={openListingDetail} />
             ) : showFilteredEmptyState ? (
               <p className="region-status">필터에 맞는 굿즈가 없어요.</p>
             ) : null}
@@ -1511,22 +1090,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
         {"+ 굿즈 등록"}
       </button>
 
-      {deleteTarget ? (
-        <div className="overlay">
-          <div className="overlay-dim" />
-          <div className="confirm-modal">
-            <p>{`'${deleteTarget.dongnm}'\uC744 \uC0AD\uC81C\uD560\uAE4C\uC694?`}</p>
-            <div className="confirm-actions">
-              <button type="button" className="confirm-cancel" onClick={() => setDeleteTarget(null)}>
-                {"\uCDE8\uC18C"}
-              </button>
-              <button type="button" className="confirm-delete" onClick={() => void handleDeleteRegion()}>
-                {"\uC0AD\uC81C"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <RegionDeleteConfirm
+        target={deleteTarget}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void handleDeleteRegion()}
+      />
       {regionSheetOpen ? (
         <button
           type="button"
@@ -1536,70 +1104,18 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
         />
       ) : null}
 
-      {regionSearchOpen ? (
-        <div className="region-search-layer">
-          <button
-            type="button"
-            className="region-search-dismiss"
-            onClick={() => {
-              setRegionSearchMessage("");
-              setRegionSearchOpen(false);
-              setRegionSheetOpen(true);
-            }}
-            aria-label="close region search"
-          />
-          <div className="region-search-popover">
-            <div className="region-search-pointer" />
-            <div className="region-search-head">
-              <button
-                type="button"
-                className="region-search-back"
-                onClick={() => {
-                  setRegionSearchMessage("");
-                  setRegionSearchOpen(false);
-                  setRegionSheetOpen(true);
-                }}
-                aria-label="back to regions"
-              >
-                {"←"}
-              </button>
-              <div>
-                <h2>{"지역 검색"}</h2>
-                <p>{"현재 위치로 지역을 추가하고 인증할 수 있어요."}</p>
-              </div>
-            </div>
-
-            {regionSearchMessage ? <p className="region-search-message">{regionSearchMessage}</p> : null}
-            <div className="region-search-input-row">
-              <input
-                className="region-search"
-                type="text"
-                value={regionSearchQuery}
-                onChange={(event) => setRegionSearchQuery(event.target.value)}
-                placeholder={"지역명으로 검색 (ex. 서초동)"}
-              />
-              <button type="button" className="region-current-button" onClick={handleUseCurrentLocation}>
-                {"현재 위치"}
-              </button>
-            </div>
-
-            {regionSearchLoading ? <p className="region-status">{"\uBD88\uB7EC\uC624\uB294 \uC911.."}</p> : null}
-            <div className="region-search-results">
-              {regionSearchResults.map((region) => (
-                <button
-                  key={region.region_id}
-                  type="button"
-                  className="region-item"
-                  disabled={addingRegionId === region.region_id}
-                  onClick={() => void handleAddRegion(region)}
-                >
-                  {addingRegionId === region.region_id ? "추가 및 인증 중.." : region.full_name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <RegionSearchLayer
+        open={regionSearchOpen}
+        query={regionSearchQuery}
+        message={regionSearchMessage}
+        loading={regionSearchLoading}
+        results={regionSearchResults}
+        addingRegionId={addingRegionId}
+        onBack={closeRegionSearchToSheet}
+        onQueryChange={setRegionSearchQuery}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        onAddRegion={(region) => void handleAddRegion(region)}
+      />
     </div>
   );
 }

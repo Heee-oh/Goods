@@ -3,7 +3,7 @@ package com.goods.market.chat.infrastructure;
 import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.domain.QChatMessage;
 import com.goods.market.chat.domain.QChatRoom;
-import com.goods.market.chat.presentation.dto.ChatRoomSummaryResponse;
+import com.goods.market.chat.application.dto.ChatRoomSummaryDto;
 import com.goods.market.listing.domain.QListing;
 import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.member.domain.QMember;
@@ -37,7 +37,7 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
     private final QChatMessage lastMessageSub = new QChatMessage("lastMessageSub");
 
     @Override
-    public List<ChatRoomSummaryResponse> findSummariesByMemberId(Long memberId) {
+    public List<ChatRoomSummaryDto> findSummariesByMemberId(Long memberId) {
         // 거래 타입이 있다면 사용, null이라면 가격이 0이면 무료 아니면 판매
         StringExpression resolvedTransactionType = Expressions.stringTemplate(
                 "coalesce(lower({0}), case when {1} = 0 then 'free' else 'sell' end)",
@@ -52,7 +52,7 @@ public class ChatRoomRepositoryCustomImpl implements ChatRoomRepositoryCustom {
 
         return queryFactory
                 .select(Projections.constructor(
-                        ChatRoomSummaryResponse.class,
+                        ChatRoomSummaryDto.class,
                         chatRoom.id,
                         listing.id,
                         listing.title,
