@@ -15,6 +15,7 @@ type ProfileInlinePanelProps = {
   onOpenImagePicker: () => void;
   onNicknameDraftChange: (value: string) => void;
   onNicknameSave: () => void;
+  onLogout: () => void;
 };
 
 export function ProfileInlinePanel({
@@ -30,7 +31,8 @@ export function ProfileInlinePanel({
   onImageInput,
   onOpenImagePicker,
   onNicknameDraftChange,
-  onNicknameSave
+  onNicknameSave,
+  onLogout
 }: ProfileInlinePanelProps) {
   const displayName = nickname || "내 프로필";
 
@@ -87,6 +89,10 @@ export function ProfileInlinePanel({
           </button>
         </div>
       </section>
+
+      <button type="button" className="profile-logout-button" onClick={onLogout}>
+        로그아웃
+      </button>
     </section>
   );
 }

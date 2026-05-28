@@ -1,5 +1,6 @@
 *.md
 !README.md
+/docs/
 
 HELP.md
 .gradle
@@ -52,3 +53,5 @@ Frontend-next/node_modules/
 backup.sql
 
 .gradle-user/
+
+/project/

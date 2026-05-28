@@ -127,15 +127,9 @@ function ReviewPromptViewport() {
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [snoozedPrompt, setSnoozedPrompt] = useState<{ tradeId: string; until: number } | null>(null);
 
   useEffect(() => {
     const openPrompt = (nextPrompt: ReviewPrompt) => {
-      const tradeId = String(nextPrompt.trade_id);
-      if (snoozedPrompt?.tradeId === tradeId && snoozedPrompt.until > Date.now()) {
-        return;
-      }
-
       setPrompt(nextPrompt);
       setIsWriting(false);
       setRating(5);
@@ -157,43 +151,7 @@ function ReviewPromptViewport() {
     return () => {
       window.removeEventListener(REVIEW_PROMPT_EVENT, handleReviewPrompt as EventListener);
     };
-  }, [snoozedPrompt]);
-
-  useEffect(() => {
-    let disposed = false;
-
-    const loadPrompt = async () => {
-      if (!hasAccessToken() || busy) {
-        return;
-      }
-
-      try {
-        const response = await apiRequest<ReviewPrompt | null>("/api/trades/review-prompt");
-        if (disposed || !response?.trade_id || !response.partner_nickname) {
-          return;
-        }
-
-        const tradeId = String(response.trade_id);
-        if (snoozedPrompt?.tradeId === tradeId && snoozedPrompt.until > Date.now()) {
-          return;
-        }
-
-        setPrompt(response);
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401) {
-          setPrompt(null);
-        }
-      }
-    };
-
-    void loadPrompt();
-    const intervalId = window.setInterval(() => void loadPrompt(), 15_000);
-
-    return () => {
-      disposed = true;
-      window.clearInterval(intervalId);
-    };
-  }, [busy, snoozedPrompt]);
+  }, []);
 
   if (!prompt) {
     return null;
@@ -214,9 +172,10 @@ function ReviewPromptViewport() {
     try {
       setBusy(true);
       setError("");
-      await apiRequest(`/api/trades/${prompt.trade_id}/reviews`, {
+      await apiRequest("/api/reviews", {
         method: "POST",
         body: JSON.stringify({
+          trade_id: prompt.trade_id,
           is_seller: prompt.writer_is_seller,
           rating,
           comment: comment.trim() ? comment.trim() : null
@@ -245,13 +204,7 @@ function ReviewPromptViewport() {
             <button
               type="button"
               className="chat-confirm-secondary"
-              onClick={() => {
-                setSnoozedPrompt({
-                  tradeId: String(prompt.trade_id),
-                  until: Date.now() + 5 * 60_000
-                });
-                dismissPrompt();
-              }}
+              onClick={dismissPrompt}
             >
               나중에
             </button>

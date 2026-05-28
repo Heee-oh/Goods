@@ -25,6 +25,27 @@
   }
 }
 
+@media (max-width: 520px) {
+  .trade-history-item {
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px 12px;
+  }
+
+  .trade-history-thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+  }
+
+  .trade-history-review-button {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 36px;
+    padding: 0 12px;
+  }
+}
+
 @media (min-width: 1200px) {
   body {
     padding: 0;

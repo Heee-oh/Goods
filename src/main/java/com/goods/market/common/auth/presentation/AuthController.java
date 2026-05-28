@@ -40,4 +40,5 @@ public class AuthController {
         AuthTokenDto login = authService.login(request.toCommand());
         return ResponseEntity.ok(ApiResponse.success(AuthTokenResponse.from(login), httpRequest.getRequestURI()));
     }
+
 }

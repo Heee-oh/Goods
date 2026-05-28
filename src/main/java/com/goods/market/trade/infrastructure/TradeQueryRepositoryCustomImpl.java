@@ -3,12 +3,14 @@ package com.goods.market.trade.infrastructure;
 import com.goods.market.listing.domain.QListing;
 import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.member.domain.QMember;
+import com.goods.market.review.domain.QReview;
 import com.goods.market.trade.application.dto.PurchaseHistoryItemDto;
 import com.goods.market.trade.application.dto.QPurchaseHistoryItemDto;
 import com.goods.market.trade.application.dto.QSaleHistoryItemDto;
 import com.goods.market.trade.application.dto.SaleHistoryItemDto;
 import com.goods.market.trade.domain.QTrade;
 import com.goods.market.trade.domain.TradeStatus;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -30,12 +32,14 @@ public class TradeQueryRepositoryCustomImpl implements TradeQueryRepositoryCusto
     private static final QListing qListing = QListing.listing;
     private static final QListingImage qListingImage = QListingImage.listingImage;
     private static final QMember qMember = QMember.member;
+    private static final QReview qReview = QReview.review;
 
     @Override
     public Slice<SaleHistoryItemDto> findCompletedSalesBySellerId(Long sellerId, Long lastTradeId, Pageable pageable) {
         int pageSize = pageable.getPageSize();
 
         List<SaleHistoryItemDto> fetch = factory.select(new QSaleHistoryItemDto(
+                        qTrade.id,
                         qTrade.listingId,
                         qListingImage.imageUrl,
                         qListing.title,
@@ -71,13 +75,22 @@ public class TradeQueryRepositoryCustomImpl implements TradeQueryRepositoryCusto
         int pageSize = pageable.getPageSize();
 
         List<PurchaseHistoryItemDto> fetch = factory.select(new QPurchaseHistoryItemDto(
+                        qTrade.id,
                         qTrade.listingId,
                         qListingImage.imageUrl,
                         qListing.title,
                         qTrade.price,
                         qTrade.sellerId,
                         qMember.nickname,
-                        qTrade.completedAt
+                        qTrade.completedAt,
+                        JPAExpressions.selectOne()
+                                .from(qReview)
+                                .where(
+                                        qReview.tradeId.eq(qTrade.id),
+                                        qReview.writerId.eq(qTrade.buyerId),
+                                        qReview.targetId.eq(qTrade.sellerId)
+                                )
+                                .exists()
                 ))
                 .from(qTrade)
                 .join(qListing).on(qTrade.listingId.eq(qListing.id))

@@ -12,11 +12,12 @@ import { ListingCardList } from "@/features/listing/ListingCardList";
 import { ListingDesktopTopbar } from "@/features/listing/ListingDesktopTopbar";
 import { ListingFeedFilters } from "@/features/listing/ListingFeedFilters";
 import { ListingLeftRail } from "@/features/listing/ListingLeftRail";
-import { MyPageSectionPlaceholder } from "@/features/listing/MyPageSectionPlaceholder";
 import { ProfileInlinePanel } from "@/features/listing/ProfileInlinePanel";
 import { RegionDeleteConfirm } from "@/features/listing/RegionDeleteConfirm";
 import { RegionPopover } from "@/features/listing/RegionPopover";
 import { RegionSearchLayer } from "@/features/listing/RegionSearchLayer";
+import { ReviewHistoryPanel } from "@/features/listing/ReviewHistoryPanel";
+import { TradeHistoryPanel } from "@/features/listing/TradeHistoryPanel";
 import type {
   FeedPath,
   InterestSliceResponse,
@@ -828,6 +829,11 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     profileFileInputRef.current?.click();
   };
 
+  const handleLogout = () => {
+    clearSession();
+    navigate("/welcome", { replace: true });
+  };
+
   const handleWriteClick = () => {
     navigate("/sell", { state: { backgroundLocation: location } });
   };
@@ -952,28 +958,14 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
                       onOpenImagePicker={openProfileImagePicker}
                       onNicknameDraftChange={setProfileNicknameDraft}
                       onNicknameSave={() => void handleProfileNicknameSave()}
+                      onLogout={handleLogout}
                     />
                   ) : isSalesHistory ? (
-                    <MyPageSectionPlaceholder
-                      badge="₩"
-                      title="판매 기록"
-                      summary="내가 판매 완료한 거래를 모아보는 공간입니다."
-                      emptyMessage="아직 판매 기록이 없어요. 판매 완료된 거래가 생기면 여기에 표시됩니다."
-                    />
+                    <TradeHistoryPanel mode="sales" />
                   ) : isPurchaseHistory ? (
-                    <MyPageSectionPlaceholder
-                      badge="◎"
-                      title="구매 기록"
-                      summary="구매 완료한 거래를 한 곳에서 확인할 수 있습니다."
-                      emptyMessage="아직 구매 기록이 없어요. 구매 완료된 거래가 생기면 여기에 표시됩니다."
-                    />
+                    <TradeHistoryPanel mode="purchases" />
                   ) : isReceivedReviews ? (
-                    <MyPageSectionPlaceholder
-                      badge="★"
-                      title="받은 리뷰"
-                      summary="상대방이 남긴 거래 후기를 확인할 수 있습니다."
-                      emptyMessage="아직 받은 리뷰가 없어요. 거래 후 상대방이 리뷰를 남기면 여기에 표시됩니다."
-                    />
+                    <ReviewHistoryPanel />
                   ) : hasFilteredData ? (
                     <ListingCardList items={filteredListings} onOpenListingDetail={openListingDetail} />
                   ) : showFilteredEmptyState ? (
@@ -1066,28 +1058,14 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
                 onOpenImagePicker={openProfileImagePicker}
                 onNicknameDraftChange={setProfileNicknameDraft}
                 onNicknameSave={() => void handleProfileNicknameSave()}
+                onLogout={handleLogout}
               />
             ) : isSalesHistory ? (
-              <MyPageSectionPlaceholder
-                badge="₩"
-                title="판매 기록"
-                summary="내가 판매 완료한 거래를 모아보는 공간입니다."
-                emptyMessage="아직 판매 기록이 없어요. 판매 완료된 거래가 생기면 여기에 표시됩니다."
-              />
+              <TradeHistoryPanel mode="sales" />
             ) : isPurchaseHistory ? (
-              <MyPageSectionPlaceholder
-                badge="◎"
-                title="구매 기록"
-                summary="구매 완료한 거래를 한 곳에서 확인할 수 있습니다."
-                emptyMessage="아직 구매 기록이 없어요. 구매 완료된 거래가 생기면 여기에 표시됩니다."
-              />
+              <TradeHistoryPanel mode="purchases" />
             ) : isReceivedReviews ? (
-              <MyPageSectionPlaceholder
-                badge="★"
-                title="받은 리뷰"
-                summary="상대방이 남긴 거래 후기를 확인할 수 있습니다."
-                emptyMessage="아직 받은 리뷰가 없어요. 거래 후 상대방이 리뷰를 남기면 여기에 표시됩니다."
-              />
+              <ReviewHistoryPanel />
             ) : hasFilteredData ? (
               <ListingCardList items={filteredListings} onOpenListingDetail={openListingDetail} />
             ) : showFilteredEmptyState ? (

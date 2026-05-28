@@ -6,13 +6,15 @@ import com.querydsl.core.annotations.QueryProjection;
 import java.time.Instant;
 
 public record PurchaseHistoryItemDto(
+        long tradeId,
         long listingId,
         String listingImageUrl,
         String title,
         Price price,
         long sellerId,
         String sellerNickname,
-        Instant tradedAt
+        Instant tradedAt,
+        boolean reviewWritten
 ) {
 
     @QueryProjection

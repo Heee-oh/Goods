@@ -48,11 +48,12 @@ class ReviewControllerTest {
         when(reviewCommandService.create(10L, 100L, true, 5, "good"))
                 .thenReturn(Review.create(10L, 20L, 100L, 200L, true, 5, "good"));
 
-        mockMvc.perform(post("/api/trades/{trade_id}/reviews", 10L)
+        mockMvc.perform(post("/api/reviews")
                         .with(authenticated(100L))
                         .contentType("application/json")
                         .content("""
                                 {
+                                  "tradeId": 10,
                                   "isSeller": true,
                                   "rating": 5,
                                   "comment": "good"
@@ -69,11 +70,12 @@ class ReviewControllerTest {
         when(reviewCommandService.create(10L, 100L, true, 5, "good"))
                 .thenThrow(new ReviewAlreadyExistsException("리뷰가 이미 존재합니다."));
 
-        mockMvc.perform(post("/api/trades/{trade_id}/reviews", 10L)
+        mockMvc.perform(post("/api/reviews")
                         .with(authenticated(100L))
                         .contentType("application/json")
                         .content("""
                                 {
+                                  "tradeId": 10,
                                   "isSeller": true,
                                   "rating": 5,
                                   "comment": "good"

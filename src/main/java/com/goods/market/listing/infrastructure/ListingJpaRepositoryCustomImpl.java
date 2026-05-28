@@ -40,12 +40,6 @@ public class ListingJpaRepositoryCustomImpl implements ListingJpaRepositoryCusto
 
     /**
      * 내 행정동 3KM 범위 내 판매글 조회 (작성중 x, 슬라이스)
-     * @param memberId 본인 id
-     * @param regionId 해당 멤버의 행정동 id
-     * @param lastListingId
-     * @param size
-     * @param pageable
-     * @return
      */
     @Override
     @Transactional(readOnly = true)
