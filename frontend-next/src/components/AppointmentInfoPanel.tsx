@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle, useState } from "react";
-import { APPOINTMENT_TEXT, formatAppointmentPreviewLabel } from "../lib/appointmentText";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { APPOINTMENT_TEXT } from "../lib/appointmentText";
 import { ApiError } from "../lib/api";
 
 type CurrentAppointment = {
@@ -19,6 +19,7 @@ type AppointmentInfoPanelProps = {
   currentAppointment: CurrentAppointment | null;
   busy: boolean;
   canComplete: boolean;
+  appointmentBlockedMessage?: string;
   overlayMode?: "page" | "inline";
   onCreateAppointment: (payload: {
     meetAt: string;
@@ -26,6 +27,7 @@ type AppointmentInfoPanelProps = {
   }) => Promise<AppointmentResponse>;
   onCancelAppointment: (appointmentId: number | string) => Promise<void>;
   onOpenCompletion: () => void;
+  onAppointmentBlocked?: (message: string) => void;
 };
 
 export type AppointmentInfoPanelHandle = {
@@ -112,10 +114,12 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
   currentAppointment,
   busy,
   canComplete,
+  appointmentBlockedMessage = "",
   overlayMode = "page",
   onCreateAppointment,
   onCancelAppointment,
-  onOpenCompletion
+  onOpenCompletion,
+  onAppointmentBlocked
 }, ref) {
   const [showComposer, setShowComposer] = useState(false);
   const [showViewer, setShowViewer] = useState(false);
@@ -125,10 +129,22 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
   const [appointmentTime, setAppointmentTime] = useState(toTimeInputValue(initialDateTime));
   const [appointmentReminder, setAppointmentReminder] = useState<number | null>(30);
   const [actionError, setActionError] = useState("");
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const reminderValidationError = getReminderValidationError(appointmentDate, appointmentTime, appointmentReminder);
   const visibleError = actionError || reminderValidationError;
 
+  const scrollToError = () => {
+    window.setTimeout(() => {
+      errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 0);
+  };
+
   const openComposer = () => {
+    if (appointmentBlockedMessage) {
+      onAppointmentBlocked?.(appointmentBlockedMessage);
+      return;
+    }
+
     const baseDate = currentAppointment ? new Date(currentAppointment.meet_at) : new Date();
     const nextDateTime = roundToNextFiveMinutes(baseDate);
     setAppointmentDate(toDateInputValue(nextDateTime));
@@ -149,18 +165,20 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
       openComposer,
       openViewer
     }),
-    [currentAppointment]
+    [appointmentBlockedMessage, currentAppointment, onAppointmentBlocked]
   );
 
   const handleCreate = async () => {
     if (reminderValidationError) {
       setActionError(reminderValidationError);
+      scrollToError();
       return;
     }
 
     const meetAt = fromDateAndTime(appointmentDate, appointmentTime);
     if (Number.isNaN(meetAt.getTime())) {
       setActionError("약속 시간을 다시 확인해 주세요.");
+      scrollToError();
       return;
     }
 
@@ -176,10 +194,12 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
     } catch (err) {
       if (err instanceof ApiError && err.fieldErrors?.length) {
         setActionError(err.fieldErrors.map((fieldError) => fieldError.message).join(" / "));
+        scrollToError();
         return;
       }
 
       setActionError(err instanceof Error ? err.message : "약속을 저장하지 못했습니다.");
+      scrollToError();
     }
   };
 
@@ -194,7 +214,7 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
   };
 
   const appointmentButtonLabel = currentAppointment
-    ? formatAppointmentPreviewLabel(currentAppointment.meet_at)
+    ? "약속 보기"
     : APPOINTMENT_TEXT.quick.open;
 
   return (
@@ -296,7 +316,7 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                   ))}
                 </div>
               </div>
-                {visibleError ? <p className="chat-sheet-error">{visibleError}</p> : null}
+                {visibleError ? <p ref={errorRef} className="chat-sheet-error">{visibleError}</p> : null}
               </div>
             </div>
             <div className="chat-sheet-actions">
@@ -311,7 +331,7 @@ export const AppointmentInfoPanel = forwardRef<AppointmentInfoPanelHandle, Appoi
                 type="button"
                 className="chat-sheet-primary"
                 onClick={() => void handleCreate()}
-                disabled={busy || reminderValidationError != null}
+                disabled={busy}
               >
                 {busy ? APPOINTMENT_TEXT.common.loading : APPOINTMENT_TEXT.composer.submit}
               </button>

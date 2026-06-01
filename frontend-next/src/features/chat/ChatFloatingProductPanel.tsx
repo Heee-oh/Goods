@@ -9,6 +9,7 @@ type ChatFloatingProductPanelProps = {
   listingImageUrl: string | null;
   listingTransactionType: TransactionType;
   showAppointmentMenu: boolean;
+  appointmentActionLabel: string;
   appointmentMenuRef: RefObject<HTMLDivElement | null>;
   onToggleAppointmentMenu: () => void;
   onOpenAppointment: () => void;
@@ -20,6 +21,7 @@ export function ChatFloatingProductPanel({
   listingImageUrl,
   listingTransactionType,
   showAppointmentMenu,
+  appointmentActionLabel,
   appointmentMenuRef,
   onToggleAppointmentMenu,
   onOpenAppointment,
@@ -42,7 +44,7 @@ export function ChatFloatingProductPanel({
         {showAppointmentMenu ? (
           <div className="chat-float-action-menu">
             <button type="button" onClick={onOpenAppointment}>
-              {APPOINTMENT_TEXT.quick.openMenu}
+              {appointmentActionLabel}
             </button>
             <button type="button" onClick={onLocationCheck}>
               {APPOINTMENT_TEXT.quick.placePrefix} {APPOINTMENT_TEXT.quick.placeSuffix}

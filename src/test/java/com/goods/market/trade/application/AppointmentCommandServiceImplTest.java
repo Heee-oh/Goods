@@ -4,9 +4,12 @@ import com.goods.market.chat.domain.ChatRoom;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
+import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.TransactionType;
 import com.goods.market.trade.application.dto.AppointmentDto;
 import com.goods.market.trade.domain.Appointment;
 import com.goods.market.trade.domain.AppointmentStatus;
+import com.goods.market.trade.exception.AppointmentBadRequestException;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
@@ -21,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +57,7 @@ class AppointmentCommandServiceImplTest {
         Appointment existing = Appointment.schedule(10L, 1L, 2L, meetAt.minusSeconds(3600), 10);
 
         when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
+        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(createPublishedListing(1L)));
         when(appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
                 10L,
                 2L,
@@ -79,6 +84,37 @@ class AppointmentCommandServiceImplTest {
     }
 
     @Test
+    void scheduleRejectsReservedListingForOtherBuyer() {
+        Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
+        ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
+        Listing listing = createPublishedListing(1L);
+        listing.reserve(3L);
+
+        when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
+        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
+                .isInstanceOf(AppointmentBadRequestException.class)
+                .hasMessageContaining("다른 사람과 거래중입니다.");
+    }
+
+    @Test
+    void scheduleRejectsSoldOutListing() {
+        Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
+        ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
+        Listing listing = createPublishedListing(1L);
+        listing.reserve(2L);
+        listing.markSoldOut(2L);
+
+        when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
+        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+
+        assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
+                .isInstanceOf(AppointmentBadRequestException.class)
+                .hasMessageContaining("거래 완료된 게시글입니다.");
+    }
+
+    @Test
     void cancelScheduledAppointmentByParticipant() {
         Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
         Appointment appointment = Appointment.schedule(10L, 1L, 2L, meetAt, 30);
@@ -89,5 +125,20 @@ class AppointmentCommandServiceImplTest {
         appointmentCommandService.cancel(2L, 99L);
 
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CANCELED);
+    }
+
+    private Listing createPublishedListing(Long sellerId) {
+        Listing listing = Listing.createDraft(
+                sellerId,
+                "title",
+                "description",
+                1L,
+                1000L,
+                TransactionType.SELL,
+                null,
+                java.util.List.of()
+        );
+        listing.publish();
+        return listing;
     }
 }

@@ -382,3 +382,34 @@
   font-weight: 800;
   white-space: nowrap;
 }
+
+.review-history-item {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.review-history-summary {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  text-align: left;
+}
+
+.review-history-detail {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #edf0f5;
+}
+
+.review-history-detail p {
+  margin: 0;
+  color: #20242c;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}

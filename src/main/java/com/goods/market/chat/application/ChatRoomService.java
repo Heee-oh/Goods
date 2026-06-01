@@ -1,12 +1,16 @@
 package com.goods.market.chat.application;
 
+import com.goods.market.chat.exception.ChatRoomParticipantException;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.ChatStartedEvent;
 import com.goods.market.chat.domain.ChatRead;
 import com.goods.market.chat.domain.ChatRoom;
 import com.goods.market.chat.domain.ChatRoomStatus;
+import com.goods.market.chat.exception.ChatRoomInactiveException;
 import com.goods.market.chat.exception.ChatRoomNotFoundException;
+import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.Status;
 import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import java.util.Optional;
@@ -26,9 +30,18 @@ public class ChatRoomService {
 
     @Transactional
     public Long getOrCreateChatRoom(Long listingId, Long buyerId) {
-        Long sellerId = listingJpaRepository.findByIdAndDeletedAtIsNull(listingId)
-                .orElseThrow(() -> new ChatRoomNotFoundException("게시글을 찾을 수 없습니다."))
-                .getSellerId();
+        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(listingId)
+                .orElseThrow(() -> new ChatRoomNotFoundException("게시글을 찾을 수 없습니다."));
+
+        if (listing.getStatus() == Status.SOLD_OUT) {
+            throw new ChatRoomInactiveException("거래 완료된 게시글은 채팅할 수 없습니다.");
+        }
+
+
+        Long sellerId = listing.getSellerId();
+        if (sellerId.equals(buyerId)) {
+            throw new ChatRoomParticipantException("자신의 판매글에는 채팅할 수 없습니다.");
+        }
 
         Optional<ChatRoom> existingRoom = chatRoomRepository
                 .findByListingIdAndBuyerIdAndStatus(listingId, buyerId, ChatRoomStatus.ACTIVE);

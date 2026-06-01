@@ -11,6 +11,8 @@ public record ChatRoomDetailResponse(
         Long listingId,
         String listingFirstImage,
         String listingStatus,
+        @JsonSerialize(using = ToStringSerializer.class)
+        Long listingReserverId,
         String listingTransactionType,
         Long sellerId,
         @JsonSerialize(using = ToStringSerializer.class)
@@ -29,6 +31,7 @@ public record ChatRoomDetailResponse(
                 dto.listingId(),
                 dto.listingFirstImage(),
                 dto.listingStatus(),
+                dto.listingReserverId(),
                 dto.listingTransactionType(),
                 dto.sellerId(),
                 dto.partnerId(),

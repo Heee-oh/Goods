@@ -18,9 +18,11 @@ import com.goods.market.listing.domain.Status;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.domain.Member;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
+import com.goods.market.trade.exception.AppointmentBadRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,10 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     @Transactional
     public AppointmentDto schedule(Long memberId, Long chatRoomId, Instant meetAt, Integer reminderMinutes) {
         ChatRoom chatRoom = findParticipatingChatRoom(memberId, chatRoomId);
+        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(chatRoom.getListingId())
+                .orElseThrow(EntityNotFoundException::new);
+
+        validateSchedulableListing(listing, chatRoom);
 
         appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
                         chatRoom.getListingId(),
@@ -166,6 +172,19 @@ public class AppointmentCommandServiceImpl implements AppointmentCommandService 
     private void validateParticipant(Appointment appointment, Long memberId) {
         if (!appointment.getSellerId().equals(memberId) && !appointment.getBuyerId().equals(memberId)) {
             throw new EntityNotFoundException();
+        }
+    }
+
+    private void validateSchedulableListing(Listing listing, ChatRoom chatRoom) {
+        if (listing.getStatus() == Status.SOLD_OUT) {
+            throw new AppointmentBadRequestException("거래 완료된 게시글입니다.");
+        }
+        if (listing.getStatus() == Status.RESERVED
+                && !Objects.equals(listing.getReserverId(), chatRoom.getBuyerId())) {
+            throw new AppointmentBadRequestException("다른 사람과 거래중입니다.");
+        }
+        if (listing.getStatus() != Status.PUBLISHED && listing.getStatus() != Status.RESERVED) {
+            throw new AppointmentBadRequestException("약속을 만들 수 없는 게시글입니다.");
         }
     }
 

@@ -27,6 +27,11 @@ const tabs = [
   { id: "mypage", path: "/mypage" }
 ] as const;
 
+function getListingDetailBasePath(pathname: string) {
+  const match = pathname.match(/^\/(listing|trading|my-listings|wishlist|sales-history|purchase-history|received-reviews)\/[^/]+/);
+  return match ? `/${match[1]}` : null;
+}
+
 type AppProps = {
   initialSelectedRegion?: {
     region_id: number;
@@ -97,7 +102,24 @@ function AppRoutes({ initialSelectedRegion = null }: AppProps) {
   const location = useLocation();
   const state = location.state as { backgroundLocation?: Location } | null;
   const backgroundLocation = state?.backgroundLocation;
-  const visibleLocation = backgroundLocation ?? location;
+  const directDetailBasePath = getListingDetailBasePath(location.pathname);
+  const syntheticBackgroundLocation: Location | null = !backgroundLocation && directDetailBasePath
+    ? {
+        pathname: directDetailBasePath,
+        search: "",
+        hash: "",
+        state: null
+      }
+    : null;
+  const visibleLocation = backgroundLocation ?? syntheticBackgroundLocation ?? location;
+  const overlayLocation: Location | null = backgroundLocation
+    ? location
+    : syntheticBackgroundLocation
+      ? {
+          ...location,
+          state: { backgroundLocation: syntheticBackgroundLocation, directDetailBackground: true }
+        }
+      : null;
 
   const renderRoute = (pathname: string) => {
     if (pathname === "/") {
@@ -144,9 +166,9 @@ function AppRoutes({ initialSelectedRegion = null }: AppProps) {
       <LocationOverrideProvider location={visibleLocation}>
         {renderRoute(visibleLocation.pathname)}
       </LocationOverrideProvider>
-      {backgroundLocation ? (
-        <LocationOverrideProvider location={location}>
-          {renderRoute(location.pathname)}
+      {overlayLocation ? (
+        <LocationOverrideProvider location={overlayLocation}>
+          {renderRoute(overlayLocation.pathname)}
         </LocationOverrideProvider>
       ) : null}
       <AppOverlays />

@@ -95,6 +95,7 @@ public class ChatQueryServiceImpl implements ChatQueryService {
                 chatRoom.getListingId(),
                 listingImageUrl,
                 listingStatus,
+                listing != null ? listing.getReserverId() : null,
                 listingTransactionType,
                 chatRoom.getSellerId(),
                 partnerId,

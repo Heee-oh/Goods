@@ -4,6 +4,7 @@ import { getAccessToken, getMemberId } from "../lib/auth";
 import { useChatNotifications } from "../lib/chatNotifications";
 import { getApiBaseUrl } from "../lib/config";
 import { useLocation, useNavigate } from "@/lib/nextRouterCompat";
+import { APPOINTMENT_TEXT } from "@/lib/appointmentText";
 import {
   AppointmentInfoPanel,
   type AppointmentInfoPanelHandle
@@ -23,6 +24,52 @@ import {
   formatPrice,
   normalizeSocketMessage
 } from "@/features/chat/floatingUtils";
+
+function normalizeId(value: number | string | null | undefined) {
+  return value == null ? null : String(value);
+}
+
+function getAppointmentBlockedMessage(room: ChatRoomDetail | null, memberId: string | null) {
+  if (!room) {
+    return "";
+  }
+
+  if (room.listing_status === "SOLD_OUT") {
+    return "거래 완료된 게시글입니다.";
+  }
+
+  if (room.listing_status !== "RESERVED") {
+    return "";
+  }
+
+  const reserverId = normalizeId(room.listing_reserver_id);
+  if (!reserverId || !memberId) {
+    return "다른 사람과 거래중입니다.";
+  }
+
+  const participantBuyerId = normalizeId(room.seller_id) === memberId
+    ? normalizeId(room.partner_id)
+    : memberId;
+
+  return participantBuyerId === reserverId ? "" : "다른 사람과 거래중입니다.";
+}
+
+function buildAppointmentCreatedMessage(payload: {
+  kind: "APPOINTMENT_CREATED";
+  meet_at: string;
+  reminder_minutes: number | null;
+  partner_nickname: string;
+}) {
+  return JSON.stringify(payload);
+}
+
+function buildAppointmentCanceledMessage(payload: {
+  kind: "APPOINTMENT_CANCELED";
+  canceled_at: string;
+  partner_nickname: string;
+}) {
+  return JSON.stringify(payload);
+}
 
 export type ChatFloatingWindowProps = {
   chatRoomId: string;
@@ -72,6 +119,7 @@ export function ChatFloatingWindow({
   const [position, setPosition] = useState(initialPosition);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showAppointmentMenu, setShowAppointmentMenu] = useState(false);
+  const [appointmentToast, setAppointmentToast] = useState("");
 
   useEffect(() => {
     sizeRef.current = size;
@@ -90,6 +138,41 @@ export function ChatFloatingWindow({
   const showLoadingShell = loading && !room;
   const listingImageUrl = room?.listing_first_image ?? null;
   const listingTransactionType = room?.listing_transaction_type ?? "sell";
+  const appointmentBlockedMessage = getAppointmentBlockedMessage(room, memberId);
+  const canSendMessage = Boolean(room && room.listing_status !== "SOLD_OUT");
+
+  const handlePublishSystemMessage = (content: string) => {
+    setRoom((current) =>
+      current
+        ? {
+            ...current,
+            messages: [
+              ...current.messages,
+              {
+                message_id: `local-${Date.now()}`,
+                sender_id: String(memberId ?? ""),
+                type: "SYSTEM",
+                content,
+                created_at: new Date().toISOString()
+              }
+            ]
+          }
+        : current
+    );
+
+    if (!stompRef.current?.connected) {
+      return;
+    }
+
+    stompRef.current.publish({
+      destination: "/pub/chat/message",
+      body: JSON.stringify({
+        chat_room_id: String(chatRoomId),
+        type: "SYSTEM",
+        content
+      })
+    });
+  };
 
   useEffect(() => {
     if (minimized) {
@@ -144,9 +227,26 @@ export function ChatFloatingWindow({
     return () => window.removeEventListener("pointerdown", handlePointerDown);
   }, [showAppointmentMenu]);
 
+  useEffect(() => {
+    if (!appointmentToast) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setAppointmentToast("");
+    }, 2200);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [appointmentToast]);
+
   const handleCreateAppointment = async (payload: { meetAt: string; reminderMinutes: number | null }) => {
     if (!room) {
       throw new Error("채팅방 정보를 불러오지 못했습니다.");
+    }
+    if (appointmentBlockedMessage) {
+      throw new Error(appointmentBlockedMessage);
     }
 
     try {
@@ -168,6 +268,15 @@ export function ChatFloatingWindow({
           : current
       );
 
+      handlePublishSystemMessage(
+        buildAppointmentCreatedMessage({
+          kind: "APPOINTMENT_CREATED",
+          meet_at: response.meet_at,
+          reminder_minutes: response.reminder_minutes,
+          partner_nickname: room.partner_nickname
+        })
+      );
+
       return response;
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : "약속을 만들지 못했습니다.");
@@ -177,6 +286,10 @@ export function ChatFloatingWindow({
   };
 
   const handleCancelAppointment = async (appointmentId: number | string) => {
+    if (!room) {
+      throw new Error("채팅방 정보를 불러오지 못했습니다.");
+    }
+
     try {
       setStatusUpdating(true);
       await apiRequest(`/api/appointments/${appointmentId}`, {
@@ -190,6 +303,14 @@ export function ChatFloatingWindow({
               current_appointment: null
             }
           : current
+      );
+
+      handlePublishSystemMessage(
+        buildAppointmentCanceledMessage({
+          kind: "APPOINTMENT_CANCELED",
+          canceled_at: new Date().toISOString(),
+          partner_nickname: room.partner_nickname
+        })
       );
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : "약속을 취소하지 못했습니다.");
@@ -254,6 +375,18 @@ export function ChatFloatingWindow({
                   !current ||
                   current.messages.some(
                     (message) => String(message.message_id) === String(nextMessage.message_id)
+                  )
+                ) {
+                  return current;
+                }
+
+                if (
+                  nextMessage.type === "SYSTEM" &&
+                  current.messages.some(
+                    (message) =>
+                      message.type === "SYSTEM" &&
+                      message.content === nextMessage.content &&
+                      String(message.sender_id) === String(nextMessage.sender_id)
                   )
                 ) {
                   return current;
@@ -397,6 +530,11 @@ export function ChatFloatingWindow({
   };
 
   const handleSend = () => {
+    if (!canSendMessage) {
+      setError("거래 완료된 게시글은 채팅할 수 없습니다.");
+      return;
+    }
+
     const content = draft.trim();
     if (!content || !stompRef.current?.connected) {
       return;
@@ -465,6 +603,7 @@ export function ChatFloatingWindow({
             listingImageUrl={listingImageUrl}
             listingTransactionType={listingTransactionType}
             showAppointmentMenu={showAppointmentMenu}
+            appointmentActionLabel={currentAppointment ? "약속 보기" : APPOINTMENT_TEXT.quick.openMenu}
             appointmentMenuRef={appointmentMenuRef}
             onToggleAppointmentMenu={() => setShowAppointmentMenu((current) => !current)}
             onOpenAppointment={() => {
@@ -486,10 +625,12 @@ export function ChatFloatingWindow({
             currentAppointment={currentAppointment}
             busy={statusUpdating}
             canComplete={false}
+            appointmentBlockedMessage={appointmentBlockedMessage}
             overlayMode="inline"
             onCreateAppointment={handleCreateAppointment}
             onCancelAppointment={handleCancelAppointment}
             onOpenCompletion={() => {}}
+            onAppointmentBlocked={setAppointmentToast}
           />
         ) : null}
         {error ? <p className="auth-error">{error}</p> : null}
@@ -504,7 +645,7 @@ export function ChatFloatingWindow({
           type="text"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={connected ? "메시지를 입력하세요" : "연결 중.."}
+          placeholder={!canSendMessage ? "거래 완료된 채팅입니다" : connected ? "메시지를 입력하세요" : "연결 중.."}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -512,10 +653,11 @@ export function ChatFloatingWindow({
             }
           }}
         />
-        <button type="button" onClick={handleSend} disabled={!draft.trim() || !connected}>
+        <button type="button" onClick={handleSend} disabled={!draft.trim() || !connected || !canSendMessage}>
           전송
         </button>
       </footer>
+      {appointmentToast ? <div className="chat-float-toast">{appointmentToast}</div> : null}
       <button
         type="button"
         className="chat-float-resize-handle"

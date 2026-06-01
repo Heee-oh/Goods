@@ -7,6 +7,7 @@ public record ChatRoomDetailDto(
         Long listingId,
         String listingFirstImage,
         String listingStatus,
+        Long listingReserverId,
         String listingTransactionType,
         Long sellerId,
         Long partnerId,

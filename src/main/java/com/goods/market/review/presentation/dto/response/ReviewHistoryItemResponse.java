@@ -7,6 +7,7 @@ public record ReviewHistoryItemResponse(
         String comment,
         int rating,
         long listingId,
+        String listingTitle,
         String listingImageUrl
 ) {
 
@@ -16,6 +17,7 @@ public record ReviewHistoryItemResponse(
                 review.comment(),
                 review.rating(),
                 review.listingId(),
+                review.listingTitle(),
                 review.listingImageUrl()
         );
     }

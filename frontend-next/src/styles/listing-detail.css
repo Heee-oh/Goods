@@ -351,6 +351,10 @@
   padding: 16px 0 0;
 }
 
+.listing-detail-modal-actions.single {
+  grid-template-columns: 1fr;
+}
+
 .listing-detail-modal-message,
 .listing-detail-modal-trade {
   height: 62px;
@@ -362,6 +366,11 @@
 .listing-detail-modal-message {
   background: #0f2741;
   color: #fff;
+}
+
+.listing-detail-modal-message.full {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .listing-detail-modal-trade {

@@ -30,6 +30,14 @@ import {
   registerChatDockRooms
 } from "@/features/chat/dockUtils";
 
+const chatDockFilters = [
+  { id: "all", label: "전체" },
+  { id: "received", label: "받은 연락" },
+  { id: "sent", label: "건 연락" }
+] as const;
+
+type ChatDockFilter = (typeof chatDockFilters)[number]["id"];
+
 let chatDockSessionMemberId: string | null = null;
 let chatDockSessionRooms: ChatRoomSummary[] | null = null;
 
@@ -41,6 +49,7 @@ export function ChatDock() {
   const [rooms, setRooms] = useState<ChatRoomSummary[]>(() => initialSessionRooms ?? []);
   const [loading, setLoading] = useState(() => !initialSessionRooms);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState<ChatDockFilter>("all");
   const [openRooms, setOpenRooms] = useState<OpenRoomState[]>([]);
   const [expandedListingIds, setExpandedListingIds] = useState<Set<string>>(() => new Set());
   const [windowRoot, setWindowRoot] = useState<HTMLElement | null>(null);
@@ -281,7 +290,7 @@ export function ChatDock() {
         animationTimerRef.current = null;
       }
     };
-  }, [rooms, expandedListingIds]);
+  }, [rooms, expandedListingIds, filter]);
 
   useEffect(() => {
     const handleOpenChatRoom = (event: Event) => {
@@ -361,9 +370,20 @@ export function ChatDock() {
   }, []);
 
   const openRoomIds = useMemo(() => new Set(openRooms.map((item) => item.chatRoomId)), [openRooms]);
+  const filteredRooms = useMemo(() => {
+    if (filter === "received") {
+      return rooms.filter((room) => room.sellerView);
+    }
+
+    if (filter === "sent") {
+      return rooms.filter((room) => !room.sellerView);
+    }
+
+    return rooms;
+  }, [filter, rooms]);
   const openRoomIdsByListing = useMemo(() => {
     const next = new Set<string>();
-    rooms.forEach((room) => {
+    filteredRooms.forEach((room) => {
       if (!room.sellerView || !room.listingId) {
         return;
       }
@@ -373,9 +393,9 @@ export function ChatDock() {
       }
     });
     return next;
-  }, [openRoomIds, rooms]);
+  }, [filteredRooms, openRoomIds]);
 
-  const groupedEntries = useMemo(() => groupChatRooms(rooms), [rooms]);
+  const groupedEntries = useMemo(() => groupChatRooms(filteredRooms), [filteredRooms]);
   return (
     <>
       <div className="chat-dock">
@@ -384,7 +404,20 @@ export function ChatDock() {
             <h2>{"\uCC44\uD305\uBC29"}</h2>
             <p>{"\uAC00\uB85C\uB85C \uB4E4\uC5B4\uAC00 \uBCF4\uBA74 \uD55C \uBC88\uC5D0 \uD655\uC778\uD560 \uC218 \uC788\uC5B4\uC694."}</p>
           </div>
-          <span>{rooms.length}</span>
+          <span>{filteredRooms.length}</span>
+        </div>
+
+        <div className="chat-dock-filter-row" aria-label="채팅방 입장 필터">
+          {chatDockFilters.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={item.id === filter ? "chat-dock-filter active" : "chat-dock-filter"}
+              onClick={() => setFilter(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
         {loading ? <p className="region-status">{"\uBD88\uB7EC\uC624\uB294 \uC911.."}</p> : null}
@@ -400,6 +433,10 @@ export function ChatDock() {
           onToggleListing={toggleListingGroup}
           onOpenRoom={openRoom}
         />
+
+        {!loading && !error && groupedEntries.length === 0 ? (
+          <p className="region-status">{"조건에 맞는 채팅방이 없어요"}</p>
+        ) : null}
       </div>
 
       {windowRoot

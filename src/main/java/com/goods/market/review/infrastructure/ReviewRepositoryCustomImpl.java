@@ -40,9 +40,12 @@ public class ReviewRepositoryCustomImpl implements ReviewRepositoryCustom {
                                 review.comment,
                                 review.rating,
                                 review.listingId,
+                                listing.title,
                                 listingImage.imageUrl
                     )
                 ).from(review)
+                .leftJoin(listing)
+                .on(review.listingId.eq(listing.id))
                 .leftJoin(listingImage)
                 .on(review.listingId.eq(listingImage.listing.id)
                         .and(listingImage.sortOrder.eq(0))

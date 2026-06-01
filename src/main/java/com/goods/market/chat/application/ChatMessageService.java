@@ -16,6 +16,8 @@ import com.goods.market.chat.exception.ChatRoomParticipantException;
 import com.goods.market.chat.infrastructure.ChatMessageRepository;
 import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
+import com.goods.market.listing.domain.Status;
+import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class ChatMessageService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatReadRepository chatReadRepository;
+    private final ListingJpaRepository listingJpaRepository;
     private final DomainEventPublisher domainEventPublisher;
 
     @Transactional
@@ -45,6 +48,12 @@ public class ChatMessageService {
         if (chatRoom.getStatus() != ChatRoomStatus.ACTIVE) {
             throw new ChatRoomInactiveException("비활성화된 채팅방입니다.");
         }
+
+        listingJpaRepository.findByIdAndDeletedAtIsNull(chatRoom.getListingId())
+                .filter(listing -> listing.getStatus() == Status.SOLD_OUT)
+                .ifPresent(listing -> {
+                    throw new ChatRoomInactiveException("거래 완료된 게시글은 채팅할 수 없습니다.");
+                });
 
         boolean firstMessage = !chatMessageRepository.existsByChatRoomId(chatRoom.getId());
 

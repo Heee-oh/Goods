@@ -1,6 +1,7 @@
 package com.goods.market.listing.infrastructure;
 
 import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.Status;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

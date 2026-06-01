@@ -12,7 +12,11 @@ export type ChatRoomDetail = {
   chat_room_id: number | string;
   listing_id: number | string;
   listing_first_image: string | null;
+  listing_status?: string | null;
+  listing_reserver_id?: number | string | null;
   listing_transaction_type: TransactionType | null;
+  seller_id?: number | string;
+  partner_id?: number | string;
   partner_nickname: string;
   partner_profile_image: string | null;
   partner_smile_score: number | null;

@@ -15,10 +15,8 @@ import { useChatNotifications } from "../lib/chatNotifications";
 const chatFilters = [
   "\uC804\uCCB4",
   "\uD310\uB9E4",
-  "\uAD6C\uB9E4",
-  "\uC548\uC77D\uC74C",
-  "\uBAA8\uC784",
-  "\uC54C\uBC14"
+  "\uAD6C\uB9E4/\uAD50\uD658",
+  "\uC548\uC77D\uC74C"
 ] as const;
 const CHAT_ROOM_PREVIEW_EVENT = "goods:chat-room-preview-updated";
 
@@ -191,13 +189,24 @@ export function ChatListPage() {
   }, []);
 
   const visibleEntries = useMemo(() => {
-    const grouped = groupChatRooms(rooms);
-    if (filter === "\uC804\uCCB4") {
-      return grouped;
-    }
+    const filteredRooms = rooms.filter((room) => {
+      if (filter === "\uD310\uB9E4") {
+        return room.sellerView;
+      }
 
-    return grouped;
-  }, [filter, rooms]);
+      if (filter === "\uAD6C\uB9E4/\uAD50\uD658") {
+        return !room.sellerView;
+      }
+
+      if (filter === "\uC548\uC77D\uC74C") {
+        return (unreadCountByRoom[room.chatRoomId] ?? 0) > 0;
+      }
+
+      return true;
+    });
+
+    return groupChatRooms(filteredRooms);
+  }, [filter, rooms, unreadCountByRoom]);
 
   return (
     <div className="page page-chat-list">

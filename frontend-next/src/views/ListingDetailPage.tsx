@@ -190,12 +190,19 @@ export function ListingDetailPage() {
   const canChat = detail ? currentMemberId !== detail.seller_id : false;
   const isOwner = detail ? currentMemberId === detail.seller_id : false;
   const canToggleInterest = detail ? currentMemberId !== detail.seller_id : false;
+  const isSoldOut = detail?.status === "SOLD_OUT";
+  const chatBlockedMessage = isSoldOut ? "거래 완료된 게시글은 채팅할 수 없습니다." : "";
+  const canOpenChat = canChat && !chatBlockedMessage;
   const showHopeLocation = Boolean(detail?.hope_region_id && detail?.hope_lat && detail?.hope_lng);
   const sellerNickname = detail?.seller_nickname?.trim() || "Seller";
   const sellerRegionName = detail?.region_name?.trim() || "\uC9C0\uC5ED \uC815\uBCF4 \uC5C6\uC74C";
   const listingTransactionType = detail?.transaction_type ?? "sell";
 
-  const isModal = Boolean((location.state as { backgroundLocation?: unknown } | null)?.backgroundLocation);
+  const routeState = location.state as {
+    backgroundLocation?: { pathname: string };
+    directDetailBackground?: boolean;
+  } | null;
+  const isModal = Boolean(routeState?.backgroundLocation);
   const sellerDisplayName = sellerNickname.replace(/_/g, " ");
   const showDetailStatusBadge = detail ? detail.status === "PUBLISHED" || detail.status === "RESERVED" || detail.status === "SOLD_OUT" : false;
   const modalHeroTag = detail ? getListingStatusLabel(detail.status, listingTransactionType) : "";
@@ -217,12 +224,21 @@ export function ListingDetailPage() {
 
     setClosing(true);
     closeTimerRef.current = window.setTimeout(() => {
+      if (routeState?.directDetailBackground && routeState.backgroundLocation?.pathname) {
+        navigate(routeState.backgroundLocation.pathname, { replace: true });
+        return;
+      }
+
       navigate(-1);
     }, 160);
-  }, [closing, navigate]);
+  }, [closing, navigate, routeState]);
 
   const handleChat = async () => {
     if (!detail || !canChat) {
+      return;
+    }
+    if (chatBlockedMessage) {
+      setError(chatBlockedMessage);
       return;
     }
 
@@ -482,29 +498,37 @@ export function ListingDetailPage() {
                     </div>
                     <span className="listing-detail-seller-local">{detail.region_name ? "LOCAL" : "ONLINE"}</span>
                   </div>
-<div className="listing-detail-modal-actions">
-                    <button
-                      type="button"
-                      className="listing-detail-modal-message"
-                      disabled={!canChat || creatingChat}
-                      onClick={() => void handleChat()}
-                    >
-                      {canChat ? "\uBA54\uC2DC\uC9C0" : "\uB0B4 \uAC8C\uC2DC\uAE00"}
-                    </button>
-                    <button
-                      type="button"
-                      className="listing-detail-modal-trade"
-                      disabled={isOwner ? statusUpdating : !canChat || creatingChat}
-                      onClick={() => {
-                        if (isOwner) {
-                          setStatusSheetOpen(true);
-                          return;
-                        }
-                        void handleChat();
-                      }}
-                    >
-                      {isOwner ? "\uC0C1\uD0DC \uBCC0\uACBD" : "\uAD50\uD658 \uC81C\uC548"}
-                    </button>
+                  <div className={`listing-detail-modal-actions${isSoldOut && !isOwner ? " single" : ""}`}>
+                    {isSoldOut && !isOwner ? (
+                      <button type="button" className="listing-detail-modal-message full" disabled>
+                        {"\uAC70\uB798 \uC644\uB8CC"}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="listing-detail-modal-message"
+                          disabled={!canOpenChat || creatingChat}
+                          onClick={() => void handleChat()}
+                        >
+                          {canOpenChat ? "\uBA54\uC2DC\uC9C0" : chatBlockedMessage ? "\uAC70\uB798 \uC644\uB8CC" : "\uB0B4 \uAC8C\uC2DC\uAE00"}
+                        </button>
+                        <button
+                          type="button"
+                          className="listing-detail-modal-trade"
+                          disabled={isOwner ? statusUpdating : !canOpenChat || creatingChat}
+                          onClick={() => {
+                            if (isOwner) {
+                              setStatusSheetOpen(true);
+                              return;
+                            }
+                            void handleChat();
+                          }}
+                        >
+                          {isOwner ? "\uC0C1\uD0DC \uBCC0\uACBD" : chatBlockedMessage ? "\uAC70\uB798 \uC644\uB8CC" : "\uAD50\uD658 \uC81C\uC548"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (
@@ -630,7 +654,7 @@ export function ListingDetailPage() {
             <button
               type="button"
               className="listing-detail-chat"
-              disabled={isOwner ? statusUpdating : !canChat || creatingChat}
+              disabled={isOwner ? statusUpdating : !canOpenChat || creatingChat}
               onClick={() => {
                 if (isOwner) {
                   setStatusSheetOpen(true);
@@ -641,7 +665,9 @@ export function ListingDetailPage() {
             >
               {isOwner
                 ? "\uC0C1\uD0DC \uBCC0\uACBD"
-                : canChat
+                : chatBlockedMessage
+                ? "\uAC70\uB798 \uC644\uB8CC"
+                : canOpenChat
                 ? (creatingChat ? "\uC5EC\uB294 \uC911.." : "\uCC44\uD305\uD558\uAE30")
                 : "\uB0B4 \uAC8C\uC2DC\uAE00"}
             </button>
@@ -654,10 +680,6 @@ export function ListingDetailPage() {
 
   return content;
 }
-
-
-
-
 
 
 

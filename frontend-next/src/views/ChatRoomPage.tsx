@@ -31,6 +31,7 @@ type ChatRoomDetail = {
   listing_id: number | string;
   listing_first_image: string | null;
   listing_status: string | null;
+  listing_reserver_id: number | string | null;
   listing_transaction_type: TransactionType | null;
   seller_id: number | string;
   partner_id: number | string;
@@ -198,6 +199,35 @@ function formatReminderText(value: number | null) {
     default:
       return "없음";
   }
+}
+
+function normalizeId(value: number | string | null | undefined) {
+  return value == null ? null : String(value);
+}
+
+function getAppointmentBlockedMessage(room: ChatRoomDetail | null, memberId: string | null) {
+  if (!room) {
+    return "";
+  }
+
+  if (room.listing_status === "SOLD_OUT") {
+    return "거래 완료된 게시글입니다.";
+  }
+
+  if (room.listing_status !== "RESERVED") {
+    return "";
+  }
+
+  const reserverId = normalizeId(room.listing_reserver_id);
+  if (!reserverId || !memberId) {
+    return "다른 사람과 거래중입니다.";
+  }
+
+  const participantBuyerId = normalizeId(room.seller_id) === memberId
+    ? normalizeId(room.partner_id)
+    : memberId;
+
+  return participantBuyerId === reserverId ? "" : "다른 사람과 거래중입니다.";
 }
 
 export function ChatRoomPage() {
@@ -390,6 +420,8 @@ export function ChatRoomPage() {
     listingTransactionType !== "sell" || listingPriceAmount == null || listingPriceAmount === 0
       ? getTransactionLabel(listingTransactionType)
       : formatPrice(listingPriceAmount);
+  const appointmentBlockedMessage = getAppointmentBlockedMessage(room, memberId);
+  const canSendMessage = Boolean(room && room.listing_status !== "SOLD_OUT");
 
   const isSeller = useMemo(() => {
     if (!room || memberId == null) {
@@ -498,6 +530,11 @@ export function ChatRoomPage() {
   };
 
   const handleSend = () => {
+    if (!canSendMessage) {
+      setError("거래 완료된 게시글은 채팅할 수 없습니다.");
+      return;
+    }
+
     const content = draft.trim();
     if (!content || !chatRoomId || !stompRef.current?.connected) {
       return;
@@ -521,6 +558,9 @@ export function ChatRoomPage() {
   }) => {
     if (!chatRoomId || !room) {
       throw new Error("채팅방 정보를 불러오지 못했습니다.");
+    }
+    if (appointmentBlockedMessage) {
+      throw new Error(appointmentBlockedMessage);
     }
 
     try {
@@ -619,6 +659,7 @@ export function ChatRoomPage() {
             }
           : current
       );
+      handlePublishSystemMessage("예약이 성공적으로 잡혔습니다.");
       setShowReserveConfirm(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "예약 상태로 변경하지 못했습니다.");
@@ -713,9 +754,11 @@ export function ChatRoomPage() {
               currentAppointment={currentAppointment}
               busy={statusUpdating}
               canComplete={exchange.canComplete}
+              appointmentBlockedMessage={appointmentBlockedMessage}
               onCreateAppointment={handleCreateAppointment}
               onCancelAppointment={handleCancelAppointment}
               onOpenCompletion={handleOpenCompletion}
+              onAppointmentBlocked={setAppointmentToast}
             />
           </section>
 
@@ -804,7 +847,7 @@ export function ChatRoomPage() {
                     handleSend();
                   }
                 }}
-                placeholder={connected ? "메시지 보내기" : "연결 중.."}
+                placeholder={!canSendMessage ? "거래 완료된 채팅입니다" : connected ? "메시지 보내기" : "연결 중.."}
               />
               <button type="button" className="chat-compose-emoji" aria-label="emoji">
                 :)
@@ -813,7 +856,7 @@ export function ChatRoomPage() {
             <button
               type="button"
               className="chat-compose-send"
-              disabled={!draft.trim() || !connected}
+              disabled={!draft.trim() || !connected || !canSendMessage}
               onClick={handleSend}
               aria-label="send"
             >

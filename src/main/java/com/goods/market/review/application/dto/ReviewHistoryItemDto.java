@@ -7,6 +7,7 @@ public record ReviewHistoryItemDto(
         String comment,
         int rating,
         long listingId,
+        String listingTitle,
         String listingImageUrl
 ) {
 

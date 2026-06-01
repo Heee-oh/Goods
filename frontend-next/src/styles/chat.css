@@ -81,6 +81,30 @@
   color: #fff;
 }
 
+.chat-dock-filter-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.chat-dock-filter {
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f2f3f5;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.chat-dock-filter.active {
+  background: #272d36;
+  color: #fff;
+}
+
 .chat-notice {
   display: flex;
   align-items: center;

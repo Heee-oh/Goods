@@ -98,7 +98,10 @@ export function useParams(): Record<string, string | undefined> {
     return { chatRoomId: decodeURIComponent(segments[1]) };
   }
 
-  if (["listing", "trading", "my-listings", "wishlist"].includes(segments[0]) && segments[1]) {
+  if (
+    ["listing", "trading", "my-listings", "wishlist", "sales-history", "purchase-history", "received-reviews"].includes(segments[0]) &&
+    segments[1]
+  ) {
     return { listingId: decodeURIComponent(segments[1]) };
   }
 
