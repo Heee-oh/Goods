@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type { ChatRoomListEntry, ChatRoomSummary } from "@/lib/chatRooms";
-import { getListingPriceLabel } from "@/lib/chatRooms";
+import { formatChatRoomLastMessage, getListingPriceLabel } from "@/lib/chatRooms";
 import { getListingStatusLabel, getListingStatusTone } from "@/lib/listingStatus";
 import { ChatThumbnail, ListingThumbnail } from "./ChatDockThumbnails";
 import { formatRelativeTime } from "./dockUtils";
@@ -118,7 +118,7 @@ function ChatDockRoomButton({
           <strong>{room.partnerNickname}</strong>
           {room.regionName ? <span>{room.regionName}</span> : null}
         </div>
-        <p>{room.lastMessage || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}</p>
+        <p>{formatChatRoomLastMessage(room.lastMessage) || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}</p>
       </div>
       <span className="chat-dock-time">{formatRelativeTime(room.lastMessageAt)}</span>
       {unreadCount ? <em className="chat-dock-unread">{unreadCount}</em> : null}

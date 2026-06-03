@@ -31,4 +31,19 @@ public record ApiResponse<T>(
                 path
         );
     }
+
+
+    public static <T> ApiResponse<T> failure(
+            String code,
+            String message,
+            String path
+    ) {
+        return new ApiResponse<>(
+                false,
+                null,
+                new ApiError(code, message, null),
+                Instant.now(),
+                path
+        );
+    }
 }

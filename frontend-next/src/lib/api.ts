@@ -1,5 +1,10 @@
 import { getAccessToken } from "./auth";
 import { getApiBaseUrl } from "./config";
+import {
+  MEMBER_REGION_VERIFICATION_FAILED_CODE,
+  REGION_VERIFICATION_EXPIRED_CODE,
+  REGION_VERIFICATION_EXPIRED_EVENT
+} from "./regionVerification";
 
 const API_BASE_URL = getApiBaseUrl();
 
@@ -45,7 +50,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isApiEnvelope<T = unknown>(value: unknown): value is ApiEnvelope<T> {
-  return isRecord(value) && "success" in value && "data" in value;
+  return isRecord(value) && "success" in value && ("data" in value || "error" in value);
 }
 
 function toFieldErrors(value: unknown): ApiFieldError[] | undefined {
@@ -94,9 +99,34 @@ function extractMessage(payload: unknown, fallback: string) {
 
 function toApiError(payload: unknown, status: number, fallbackMessage: string) {
   const fieldErrors = isRecord(payload) ? toFieldErrors(payload.fieldErrors) : undefined;
-  const message = extractMessage(payload, fallbackMessage);
   const code = isRecord(payload) && typeof payload.code === "string" ? payload.code : undefined;
+  const message =
+    code === MEMBER_REGION_VERIFICATION_FAILED_CODE
+      ? "현재 지역이 아닙니다."
+      : extractMessage(payload, fallbackMessage);
   return new ApiError(message, status, { code, fieldErrors });
+}
+
+function emitGlobalApiError(error: ApiError) {
+  if (error.code !== REGION_VERIFICATION_EXPIRED_CODE || typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(REGION_VERIFICATION_EXPIRED_EVENT, {
+      detail: {
+        code: REGION_VERIFICATION_EXPIRED_CODE,
+        message: error.message,
+        status: error.status
+      }
+    })
+  );
+}
+
+function throwApiError(payload: unknown, status: number, fallbackMessage: string): never {
+  const error = toApiError(payload, status, fallbackMessage);
+  emitGlobalApiError(error);
+  throw error;
 }
 
 async function readJsonResponse(response: Response) {
@@ -132,9 +162,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
   if (!response.ok) {
     const errorPayload = await readJsonResponse(response);
     if (isApiEnvelope(errorPayload) && errorPayload.error) {
-      throw toApiError(errorPayload.error, response.status, "요청에 실패했습니다.");
+      throwApiError(errorPayload.error, response.status, "요청에 실패했습니다.");
     }
-    throw toApiError(errorPayload, response.status, "요청에 실패했습니다.");
+    throwApiError(errorPayload, response.status, "요청에 실패했습니다.");
   }
 
   if (response.status === 204) {
@@ -144,7 +174,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}) 
   const payload = await readJsonResponse(response);
   if (isApiEnvelope<T>(payload)) {
     if (!payload.success) {
-      throw toApiError(payload.error, response.status, "요청에 실패했습니다.");
+      throwApiError(payload.error, response.status, "요청에 실패했습니다.");
     }
     return payload.data as T;
   }

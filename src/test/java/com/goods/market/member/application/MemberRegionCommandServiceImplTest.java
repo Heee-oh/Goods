@@ -2,7 +2,6 @@ package com.goods.market.member.application;
 
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.domain.Member;
-import com.goods.market.member.domain.exception.memberRegion.MemberRegionNotFoundException;
 import com.goods.market.member.domain.exception.memberRegion.MemberRegionVerificationFailedException;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import com.goods.market.member.infrastructure.memberRegion.MemberRegionJpaRepository;
@@ -21,7 +20,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -41,32 +39,6 @@ class MemberRegionCommandServiceImplTest {
 
     @InjectMocks
     MemberRegionCommandServiceImpl service;
-
-    @Test
-    @DisplayName("본인 memberRegion이 존재하고 좌표가 해당 region에 포함되면 인증 시간을 갱신한다")
-    void verifyMemberRegion_updatesVerifiedAt_whenCoordinateIsInRegion() {
-        Long memberRegionId = 1L;
-        Long memberId = 10L;
-        BigDecimal lat = new BigDecimal("37.5665");
-        BigDecimal lng = new BigDecimal("126.9780");
-
-        MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
-        when(memberRegion.getRegionId()).thenReturn(20);
-
-        when(memberRegionJpaRepository.findMemberRegionByIdAndMemberId(memberRegionId, memberId))
-                .thenReturn(Optional.of(memberRegion));
-
-        when(regionJpaRepository.validateCoordinateInRegion(20, lat, lng))
-                .thenReturn(true);
-
-        service.verifyMemberRegion(memberRegionId, memberId, lat, lng);
-
-        verify(memberRegionJpaRepository).findMemberRegionByIdAndMemberId(memberRegionId, memberId);
-        verify(regionJpaRepository).validateCoordinateInRegion(20, lat, lng);
-
-        verify(memberRegion).verify(any(Instant.class), eq(lat), eq(lng));
-        verifyNoMoreInteractions(regionJpaRepository);
-    }
 
     @Test
     @DisplayName("기존 동네가 없으면 검증 완료 시 좌표를 저장한 새 memberRegion을 추가한다")
@@ -132,44 +104,6 @@ class MemberRegionCommandServiceImplTest {
     }
 
     @Test
-    @DisplayName("memberRegion이 없으면 MemberRegionNotFoundException을 던진다")
-    void verifyMemberRegion_throwsNotFound_whenMemberRegionDoesNotExist() {
-        Long memberRegionId = 1L;
-        Long memberId = 10L;
-
-        when(memberRegionJpaRepository.findMemberRegionByIdAndMemberId(memberRegionId, memberId))
-                .thenReturn(Optional.empty());
-
-        assertThatThrownBy(() ->
-                service.verifyMemberRegion(memberRegionId, memberId, new BigDecimal("37.0"), new BigDecimal("127.0"))
-        ).isInstanceOf(MemberRegionNotFoundException.class);
-
-        verify(memberRegionJpaRepository).findMemberRegionByIdAndMemberId(memberRegionId, memberId);
-        verifyNoInteractions(regionJpaRepository);
-    }
-
-    @Test
-    @DisplayName("memberRegion의 regionId가 null이면 MemberRegionNotFoundException을 던진다")
-    void verifyMemberRegion_throwsNotFound_whenRegionIdIsNull() {
-        Long memberRegionId = 1L;
-        Long memberId = 10L;
-
-        MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
-        when(memberRegion.getRegionId()).thenReturn(null);
-
-        when(memberRegionJpaRepository.findMemberRegionByIdAndMemberId(memberRegionId, memberId))
-                .thenReturn(Optional.of(memberRegion));
-
-        assertThatThrownBy(() ->
-                service.verifyMemberRegion(memberRegionId, memberId, new BigDecimal("37.0"), new BigDecimal("127.0"))
-        ).isInstanceOf(MemberRegionNotFoundException.class);
-
-        verify(memberRegionJpaRepository).findMemberRegionByIdAndMemberId(memberRegionId, memberId);
-        verifyNoInteractions(regionJpaRepository);
-        verify(memberRegion, never()).verify(any(Instant.class));
-    }
-
-    @Test
     @DisplayName("비활성 memberRegion이 있으면 verify 시 다시 활성화한다")
     void verifyMemberRegionByRegionId_reactivatesExistingRegion_whenInactiveRegionExists() {
         Long memberId = 10L;
@@ -187,6 +121,8 @@ class MemberRegionCommandServiceImplTest {
 
         service.verifyMemberRegionByRegionId(regionId, memberId, lat, lng);
 
+        verify(regionJpaRepository).validateCoordinateInRegion(regionId, lat, lng);
+        verifyNoMoreInteractions(regionJpaRepository);
         verify(memberRegion).verify(any(Instant.class), eq(lat), eq(lng));
     }
 
@@ -212,27 +148,20 @@ class MemberRegionCommandServiceImplTest {
 
     @Test
     @DisplayName("좌표가 region에 포함되지 않으면 MemberRegionVerificationFailedException을 던진다")
-    void verifyMemberRegion_throwsVerificationFailed_whenCoordinateIsNotInRegion() {
-        Long memberRegionId = 1L;
+    void verifyMemberRegionByRegionId_throwsVerificationFailed_whenCoordinateIsNotInRegion() {
         Long memberId = 10L;
+        Integer regionId = 11000;
         BigDecimal lat = new BigDecimal("35.1796");
         BigDecimal lng = new BigDecimal("129.0756");
 
-        MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
-        when(memberRegion.getRegionId()).thenReturn(20);
-
-        when(memberRegionJpaRepository.findMemberRegionByIdAndMemberId(memberRegionId, memberId))
-                .thenReturn(Optional.of(memberRegion));
-
-        when(regionJpaRepository.validateCoordinateInRegion(20, lat, lng))
+        when(regionJpaRepository.validateCoordinateInRegion(regionId, lat, lng))
                 .thenReturn(false);
 
         assertThatThrownBy(() ->
-                service.verifyMemberRegion(memberRegionId, memberId, lat, lng)
+                service.verifyMemberRegionByRegionId(regionId, memberId, lat, lng)
         ).isInstanceOf(MemberRegionVerificationFailedException.class);
 
-        verify(memberRegionJpaRepository).findMemberRegionByIdAndMemberId(memberRegionId, memberId);
-        verify(regionJpaRepository).validateCoordinateInRegion(20, lat, lng);
-        verify(memberRegion, never()).verify(any(Instant.class), any(BigDecimal.class), any(BigDecimal.class));
+        verify(regionJpaRepository).validateCoordinateInRegion(regionId, lat, lng);
+        verifyNoInteractions(memberRegionJpaRepository, memberJpaRepository);
     }
 }

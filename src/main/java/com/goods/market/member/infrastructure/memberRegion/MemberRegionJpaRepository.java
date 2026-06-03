@@ -14,6 +14,8 @@ public interface MemberRegionJpaRepository extends JpaRepository<MemberRegion, L
 
     Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(Long memberId, Integer regionId);
 
+    Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNullAndPrimaryTrue(Long memberId, Integer regionId);
+
     Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndPrimaryTrue(Long memberId, Integer regionId);
 
     Optional<MemberRegion> findFirstByMember_IdAndRegionId(Long memberId, Integer regionId);

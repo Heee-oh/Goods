@@ -101,7 +101,7 @@ public class MemberRegion {
     }
 
     public void checkVerification() {
-        if (!isVerified()) {
+        if (isExpired(Instant.now())) {
             throw new RegionVerificationExpiredException("Region verification expired");
         }
     }

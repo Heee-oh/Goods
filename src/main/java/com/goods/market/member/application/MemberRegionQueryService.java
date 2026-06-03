@@ -1,5 +1,7 @@
 package com.goods.market.member.application;
 
 public interface MemberRegionQueryService {
-    void validateMemberRegion(Long id, Long memberId);
+
+    void validateMemberRegionByRegionId(Long memberId, Integer regionId);
+
 }

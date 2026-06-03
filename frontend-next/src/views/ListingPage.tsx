@@ -5,6 +5,11 @@ import { ApiError, apiRequest } from "../lib/api";
 import { convertImageToWebpFile } from "../lib/image";
 import { clearSession, getMemberId, getSelectedRegionId } from "../lib/auth";
 import { readCachedJson, writeCachedJson } from "../lib/cache";
+import {
+  MEMBER_REGION_VERIFICATION_FAILED_CODE,
+  OPEN_REGION_SHEET_EVENT,
+  type OpenRegionSheetState
+} from "@/lib/regionVerification";
 import { getTransactionLabel } from "../lib/transactionType";
 import { Spinner } from "@/components/ui/spinner";
 import { REGIONS_CACHE_PREFIX } from "@/features/listing/constants";
@@ -62,6 +67,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   const profileFileInputRef = useRef<HTMLInputElement | null>(null);
   const marketplaceItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const myPageItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const handledOpenRegionSheetRequestRef = useRef<number | null>(null);
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
   const [regionSearchOpen, setRegionSearchOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<RegionResponse | null>(null);
@@ -75,6 +81,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileUploading, setProfileUploading] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(initialSelectedRegion?.region_id ?? null);
+  const [reverifyRegionId, setReverifyRegionId] = useState<number | null>(null);
   const initialSelectedRegionIdRef = useRef<number | null>(initialSelectedRegion?.region_id ?? null);
   const [regionSearchQuery, setRegionSearchQuery] = useState("");
   const [regionSearchResults, setRegionSearchResults] = useState<RegionSearchItem[]>([]);
@@ -589,13 +596,14 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     try {
       const targetRegion = regions.find((region) => region.region_id === regionId) ?? null;
 
-      if (targetRegion && !targetRegion.verified_at) {
+      if (targetRegion && (!targetRegion.verified_at || reverifyRegionId === regionId)) {
         await verifyRegion(regionId);
         const reloaded = await loadRegions({ force: true });
         const verifiedRegion = reloaded.find((region) => region.region_id === regionId) ?? targetRegion;
         setRegions(reloaded);
         setSelectedRegionId(verifiedRegion.region_id);
         saveSelectedRegion(verifiedRegion);
+        setReverifyRegionId((current) => (current === regionId ? null : current));
       } else {
         setSelectedRegionId(regionId);
         if (targetRegion) {
@@ -608,6 +616,10 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
       setHasMore(true);
       await loadCurrentFeed(regionId);
     } catch (err) {
+      if (err instanceof ApiError && err.code === MEMBER_REGION_VERIFICATION_FAILED_CODE) {
+        return;
+      }
+
       setError(err instanceof Error ? err.message : "Failed to load listings.");
     } finally {
       setLoading(false);
@@ -693,7 +705,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
 
         const reloadedAfterRollback = await loadRegions({ force: true });
         setRegions(reloadedAfterRollback);
-        setRegionSearchMessage("현재 지역이 아닙니다.");
+        setRegionSearchMessage("현재 위치에서 인증할 수 없는 지역이에요.");
         return;
       }
 
@@ -844,9 +856,13 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     }
   }, [location.pathname, navigate]);
 
-  const openRegionSheet = useCallback(() => {
+  const openRegionSheet = useCallback((options?: { requireReverification?: boolean }) => {
+    if (options?.requireReverification) {
+      setReverifyRegionId(selectedRegionId ?? getSelectedRegionId());
+    }
+    setRegionSearchOpen(false);
     setRegionSheetOpen(true);
-  }, []);
+  }, [selectedRegionId]);
 
   const openRegionSearch = useCallback(() => {
     setRegionSearchQuery("");
@@ -862,6 +878,33 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     setRegionSearchOpen(false);
     setRegionSheetOpen(true);
   }, []);
+
+  useEffect(() => {
+    const handleOpenRegionSheet = () => {
+      openRegionSheet({ requireReverification: true });
+    };
+
+    window.addEventListener(OPEN_REGION_SHEET_EVENT, handleOpenRegionSheet);
+
+    return () => {
+      window.removeEventListener(OPEN_REGION_SHEET_EVENT, handleOpenRegionSheet);
+    };
+  }, [openRegionSheet]);
+
+  useEffect(() => {
+    const state = location.state as OpenRegionSheetState | null;
+    if (!state?.openRegionSheet) {
+      return;
+    }
+
+    const requestKey = state.openRegionSheetRequestedAt ?? 0;
+    if (handledOpenRegionSheetRequestRef.current === requestKey) {
+      return;
+    }
+
+    handledOpenRegionSheetRequestRef.current = requestKey;
+    openRegionSheet({ requireReverification: true });
+  }, [location.state, openRegionSheet]);
 
   const openListingDetail = (listingId: number) => {
     const basePath = isTradingHub
@@ -885,6 +928,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
       open={regionSheetOpen}
       regions={regions}
       selectedRegionId={selectedRegionId}
+      reverifyRegionId={reverifyRegionId}
       canAddRegion={canAddRegion}
       onSelectRegion={(regionId) => void handleSelectRegion(regionId)}
       onRequestDelete={setDeleteTarget}

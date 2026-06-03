@@ -468,14 +468,12 @@
 }
 
 .region-search-message {
-  margin: 12px 0 0;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: #f4f0e2;
-  border: 1px solid rgba(212, 175, 55, 0.28);
-  color: #7c5a00;
-  font-size: 14px;
-  font-weight: 600;
+  margin: 8px 0 0;
+  padding: 0 4px;
+  color: #a06600;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .region-search-results {

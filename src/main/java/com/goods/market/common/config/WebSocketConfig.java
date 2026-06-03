@@ -1,6 +1,6 @@
 package com.goods.market.common.config;
 
-import com.goods.market.common.JwtStompChannelInterceptor;
+import com.goods.market.common.interceptor.JwtStompChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;

@@ -6,6 +6,28 @@ import { getTransactionLabel, type TransactionType } from "@/lib/transactionType
 
 type TradeHistoryMode = "sales" | "purchases";
 
+type RawTradeHistoryItem = {
+  trade_id?: number | string;
+  tradeId?: number | string;
+  listing_id?: number | string;
+  listingId?: number | string;
+  listing_image_url?: string | null;
+  listingImageUrl?: string | null;
+  title?: string;
+  price_amount?: number | string;
+  priceAmount?: number | string;
+  transaction_type?: TransactionType;
+  transactionType?: TransactionType;
+  partner_id?: number | string;
+  partnerId?: number | string;
+  partner_nickname?: string;
+  partnerNickname?: string;
+  traded_at?: string;
+  tradedAt?: string;
+  review_written?: boolean;
+  reviewWritten?: boolean;
+};
+
 type TradeHistoryItem = {
   trade_id: number | string;
   listing_id: number | string;
@@ -20,12 +42,14 @@ type TradeHistoryItem = {
 };
 
 type TradeHistorySlice = {
-  content?: TradeHistoryItem[];
+  content?: RawTradeHistoryItem[];
 };
 
 type TradeHistoryPanelProps = {
   mode: TradeHistoryMode;
 };
+
+const REVIEW_SUBMITTED_EVENT = "goods:review-submitted";
 
 function formatTradePrice(price: number, transactionType: TransactionType) {
   if (transactionType !== "sell") {
@@ -45,6 +69,23 @@ function formatTradeDate(value: string) {
   });
 }
 
+function normalizeTradeHistoryItem(item: RawTradeHistoryItem): TradeHistoryItem {
+  const price = item.price_amount ?? item.priceAmount ?? 0;
+
+  return {
+    trade_id: item.trade_id ?? item.tradeId ?? "",
+    listing_id: item.listing_id ?? item.listingId ?? "",
+    listing_image_url: item.listing_image_url ?? item.listingImageUrl ?? null,
+    title: item.title ?? "상품 정보",
+    price_amount: typeof price === "number" ? price : Number(price),
+    transaction_type: item.transaction_type ?? item.transactionType ?? "sell",
+    partner_id: item.partner_id ?? item.partnerId ?? "",
+    partner_nickname: item.partner_nickname ?? item.partnerNickname ?? "상대 사용자",
+    traded_at: item.traded_at ?? item.tradedAt ?? new Date().toISOString(),
+    review_written: Boolean(item.review_written ?? item.reviewWritten)
+  };
+}
+
 export function TradeHistoryPanel({ mode }: TradeHistoryPanelProps) {
   const navigate = useNavigate();
   const [items, setItems] = useState<TradeHistoryItem[]>([]);
@@ -60,7 +101,7 @@ export function TradeHistoryPanel({ mode }: TradeHistoryPanelProps) {
         setError("");
         const response = await apiRequest<TradeHistorySlice>(`/api/trades/${mode}?size=20`);
         if (!disposed) {
-          setItems(response.content ?? []);
+          setItems((response.content ?? []).map(normalizeTradeHistoryItem));
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
@@ -85,6 +126,32 @@ export function TradeHistoryPanel({ mode }: TradeHistoryPanelProps) {
       disposed = true;
     };
   }, [mode, navigate]);
+
+  useEffect(() => {
+    const handleReviewSubmitted = (event: Event) => {
+      const customEvent = event as CustomEvent<{ trade_id?: number | string; tradeId?: number | string }>;
+      const tradeId = customEvent.detail?.trade_id ?? customEvent.detail?.tradeId;
+      if (tradeId == null) {
+        return;
+      }
+
+      setItems((current) =>
+        current.map((item) =>
+          String(item.trade_id) === String(tradeId)
+            ? {
+                ...item,
+                review_written: true
+              }
+            : item
+        )
+      );
+    };
+
+    window.addEventListener(REVIEW_SUBMITTED_EVENT, handleReviewSubmitted as EventListener);
+    return () => {
+      window.removeEventListener(REVIEW_SUBMITTED_EVENT, handleReviewSubmitted as EventListener);
+    };
+  }, []);
 
   if (loading) {
     return <p className="region-status">거래 기록을 불러오는 중...</p>;

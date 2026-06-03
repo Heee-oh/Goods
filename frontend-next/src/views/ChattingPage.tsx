@@ -3,6 +3,7 @@ import { useNavigate } from "@/lib/nextRouterCompat";
 import { ApiError, apiRequest } from "../lib/api";
 import { clearSession } from "../lib/auth";
 import {
+  formatChatRoomLastMessage,
   groupChatRooms,
   getListingPriceLabel,
   normalizeChatRoomSummary,
@@ -172,7 +173,7 @@ export function ChatListPage() {
             room.chatRoomId === normalizedChatRoomId
               ? {
                   ...room,
-                  lastMessage: content,
+                  lastMessage: formatChatRoomLastMessage(content),
                   lastMessageAt: createdAt ?? new Date().toISOString()
                 }
               : room
@@ -298,7 +299,7 @@ export function ChatListPage() {
                             <span>{formatRelativeTime(room.lastMessageAt)}</span>
                           </div>
                           <p className="chat-list-last-message">
-                            {room.lastMessage || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}
+                            {formatChatRoomLastMessage(room.lastMessage) || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}
                           </p>
                         </div>
                         {unreadCountByRoom[room.chatRoomId] ? (
@@ -332,7 +333,7 @@ export function ChatListPage() {
                   <span>{formatRelativeTime(room.lastMessageAt)}</span>
                 </div>
                 <p className="chat-list-last-message">
-                  {room.lastMessage || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}
+                  {formatChatRoomLastMessage(room.lastMessage) || "\uBA54\uC2DC\uC9C0\uAC00 \uC544\uC9C1 \uC5C6\uC5B4\uC694"}
                 </p>
               </div>
               {unreadCountByRoom[room.chatRoomId] ? (

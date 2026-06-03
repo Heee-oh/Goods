@@ -72,6 +72,26 @@ function resolveListingTransactionType(value: string | null | undefined, price: 
   return Number(price ?? 0) === 0 ? "free" : "sell";
 }
 
+export function formatChatRoomLastMessage(message: string) {
+  if (!message) {
+    return "";
+  }
+
+  try {
+    const parsed = JSON.parse(message) as { kind?: string };
+    if (parsed.kind === "APPOINTMENT_CREATED") {
+      return "약속이 잡혔습니다.";
+    }
+    if (parsed.kind === "APPOINTMENT_CANCELED") {
+      return "약속이 취소되었습니다.";
+    }
+  } catch {
+    return message;
+  }
+
+  return message;
+}
+
 export function normalizeChatRoomSummary(room: RawChatRoomSummary): ChatRoomSummary | null {
   const chatRoomId = room.chat_room_id ?? room.chatRoomId;
   if (chatRoomId == null) {
@@ -101,7 +121,7 @@ export function normalizeChatRoomSummary(room: RawChatRoomSummary): ChatRoomSumm
     partnerNickname: room.partner_nickname ?? room.partnerNickname ?? "\uC0C1\uB300 \uC0AC\uC6A9\uC790",
     partnerProfileImage: room.partner_profile_image ?? room.partnerProfileImage ?? null,
     regionName: room.region_name ?? room.regionName ?? null,
-    lastMessage: room.last_message ?? room.lastMessage ?? "",
+    lastMessage: formatChatRoomLastMessage(room.last_message ?? room.lastMessage ?? ""),
     lastMessageAt: room.last_message_at ?? room.lastMessageAt ?? new Date().toISOString()
   };
 }

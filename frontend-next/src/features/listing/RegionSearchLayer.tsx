@@ -44,7 +44,6 @@ export function RegionSearchLayer({
           </div>
         </div>
 
-        {message ? <p className="region-search-message">{message}</p> : null}
         <div className="region-search-input-row">
           <input
             className="region-search"
@@ -57,6 +56,7 @@ export function RegionSearchLayer({
             {"현재 위치"}
           </button>
         </div>
+        {message ? <p className="region-search-message">{message}</p> : null}
 
         {loading ? <p className="region-status">{"\uBD88\uB7EC\uC624\uB294 \uC911.."}</p> : null}
         <div className="region-search-results">

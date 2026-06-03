@@ -4,6 +4,7 @@ import { useNavigate } from "@/lib/nextRouterCompat";
 import { ApiError, apiRequest } from "../lib/api";
 import { clearSession } from "../lib/auth";
 import {
+  formatChatRoomLastMessage,
   groupChatRooms,
   normalizeChatRoomSummary,
   type ChatRoomSummary,
@@ -192,7 +193,7 @@ export function ChatDock() {
             room.chatRoomId === normalizedChatRoomId
               ? {
                   ...room,
-                  lastMessage: content,
+                  lastMessage: formatChatRoomLastMessage(content),
                   lastMessageAt: createdAt ?? new Date().toISOString()
                 }
               : room

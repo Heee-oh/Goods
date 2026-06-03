@@ -2,6 +2,7 @@ package com.goods.market.common.presentation;
 
 import com.goods.market.common.api.ApiResponse;
 import com.goods.market.common.api.FieldErrorItem;
+import com.goods.market.member.domain.exception.memberRegion.RegionVerificationExpiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.springframework.core.Ordered;
@@ -32,7 +33,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.failure("VALIDATION_FAILED", message, fieldErrors, request.getRequestURI()));
     }
 
-    @ExceptionHandler(Exception.class)
+    @ExceptionHandler(RegionVerificationExpiredException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRegionVerificationExpired(
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.failure(
+                        "REGION_VERIFICATION_EXPIRED",
+                        "지역 인증이 만료되었습니다.",
+                        request.getRequestURI()
+                ));
+    }
+    @ExceptionHandler(InternalError.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception e, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure(

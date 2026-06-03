@@ -1,23 +1,22 @@
-package com.goods.market.common;
+package com.goods.market.common.interceptor;
 
 import com.goods.market.common.auth.AuthPrincipal;
 import com.goods.market.common.auth.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.List;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class JwtStompChannelInterceptor implements ChannelInterceptor {
 
@@ -25,8 +24,8 @@ public class JwtStompChannelInterceptor implements ChannelInterceptor {
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        System.out.println("Command: " + accessor.getCommand());
-        System.out.println("Command: " + accessor.toString());
+        log.info("Command: {}", accessor.getCommand());
+        log.info("Command: {}", accessor.toString());
 
         // STOMP 연결 시점에만 토큰 확인 후 인증 객체 주입
         if (StompCommand.CONNECT == accessor.getCommand()) {

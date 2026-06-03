@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useNavigate } from "@/lib/nextRouterCompat";
+import { useLocation, useNavigate } from "@/lib/nextRouterCompat";
 import { ApiError, apiRequest } from "@/lib/api";
 import { hasAccessToken } from "@/lib/auth";
 import { useChatNotifications } from "@/lib/chatNotifications";
+import {
+  OPEN_REGION_SHEET_EVENT,
+  REGION_VERIFICATION_EXPIRED_EVENT,
+  type OpenRegionSheetState
+} from "@/lib/regionVerification";
 
 type ReviewPrompt = {
   trade_id: number | string;
@@ -23,7 +28,15 @@ type TradeCompletionPrompt = {
 };
 
 const REVIEW_PROMPT_EVENT = "goods:review-prompt";
+const REVIEW_SUBMITTED_EVENT = "goods:review-submitted";
 const OPEN_CHAT_ROOM_EVENT = "goods:open-chat-room";
+const LISTING_SHELL_PATH_PATTERN =
+  /^\/(listing|trading|my-listings|wishlist|sales-history|purchase-history|received-reviews)(?:\/|$)/;
+
+function getRegionSheetTargetPath(pathname: string) {
+  const match = pathname.match(LISTING_SHELL_PATH_PATTERN);
+  return match ? `/${match[1]}` : "/listing";
+}
 
 function ChatToastViewport() {
   const { toast, dismissToast, markRoomRead } = useChatNotifications();
@@ -181,6 +194,13 @@ function ReviewPromptViewport() {
           comment: comment.trim() ? comment.trim() : null
         })
       });
+      window.dispatchEvent(
+        new CustomEvent(REVIEW_SUBMITTED_EVENT, {
+          detail: {
+            trade_id: prompt.trade_id
+          }
+        })
+      );
       setPrompt(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "리뷰를 등록하지 못했습니다.");
@@ -365,6 +385,61 @@ function TradeCompletionPromptViewport() {
   );
 }
 
+function RegionVerificationExpiredViewport() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const handleExpired = () => {
+      setOpen(true);
+    };
+
+    window.addEventListener(REGION_VERIFICATION_EXPIRED_EVENT, handleExpired);
+
+    return () => {
+      window.removeEventListener(REGION_VERIFICATION_EXPIRED_EVENT, handleExpired);
+    };
+  }, []);
+
+  if (!open) {
+    return null;
+  }
+
+  const handleConfirm = () => {
+    const targetPath = getRegionSheetTargetPath(location.pathname);
+    const state: OpenRegionSheetState = {
+      openRegionSheet: true,
+      openRegionSheetRequestedAt: Date.now()
+    };
+
+    setOpen(false);
+
+    if (location.pathname === targetPath) {
+      window.dispatchEvent(new CustomEvent(OPEN_REGION_SHEET_EVENT));
+      return;
+    }
+
+    navigate(targetPath, { state });
+  };
+
+  return (
+    <div className="trade-prompt-overlay">
+      <div className="trade-prompt-modal region-expired-modal">
+        <h2>지역 인증이 만료되었어요</h2>
+        <p>
+          안전한 거래를 위해 내 지역을 다시 인증해주세요.
+          <br />
+          현재 위치로 한 번만 확인하면 바로 이어서 이용할 수 있어요.
+        </p>
+        <button type="button" className="chat-confirm-primary" onClick={handleConfirm}>
+          확인
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AppOverlays() {
   return (
     <>
@@ -372,6 +447,7 @@ export function AppOverlays() {
       <AppointmentReminderViewport />
       <TradeCompletionPromptViewport />
       <ReviewPromptViewport />
+      <RegionVerificationExpiredViewport />
     </>
   );
 }
