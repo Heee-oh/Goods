@@ -264,6 +264,10 @@
   color: #d4a514;
 }
 
+.region-sheet-state.failed {
+  color: #dc2626;
+}
+
 .region-radio {
   width: 18px;
   height: 18px;

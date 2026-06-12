@@ -6,7 +6,6 @@ import { convertImageToWebpFile } from "../lib/image";
 import { clearSession, getMemberId, getSelectedRegionId } from "../lib/auth";
 import { readCachedJson, writeCachedJson } from "../lib/cache";
 import {
-  MEMBER_REGION_VERIFICATION_FAILED_CODE,
   OPEN_REGION_SHEET_EVENT,
   type OpenRegionSheetState
 } from "@/lib/regionVerification";
@@ -51,6 +50,22 @@ type ListingPageProps = {
   initialSelectedRegion?: RegionResponse | null;
 };
 
+function getRegionsCacheKey() {
+  const memberId = getMemberId();
+  return memberId ? `${REGIONS_CACHE_PREFIX}:${memberId}` : REGIONS_CACHE_PREFIX;
+}
+
+function markRegionVerificationRequired(regions: RegionResponse[], regionId: number) {
+  return regions.map((region) =>
+    region.region_id === regionId
+      ? {
+          ...region,
+          verified_at: null
+        }
+      : region
+  );
+}
+
 export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = null }: ListingPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,6 +97,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   const [profileUploading, setProfileUploading] = useState(false);
   const [selectedRegionId, setSelectedRegionId] = useState<number | null>(initialSelectedRegion?.region_id ?? null);
   const [reverifyRegionId, setReverifyRegionId] = useState<number | null>(null);
+  const [verificationFailedRegionId, setVerificationFailedRegionId] = useState<number | null>(null);
   const initialSelectedRegionIdRef = useRef<number | null>(initialSelectedRegion?.region_id ?? null);
   const [regionSearchQuery, setRegionSearchQuery] = useState("");
   const [regionSearchResults, setRegionSearchResults] = useState<RegionSearchItem[]>([]);
@@ -163,8 +179,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   }, [marketplaceActiveIndex, myPageActiveIndex]);
 
   const loadRegions = async (options?: { force?: boolean }) => {
-    const memberId = getMemberId();
-    const cacheKey = memberId ? `${REGIONS_CACHE_PREFIX}:${memberId}` : REGIONS_CACHE_PREFIX;
+    const cacheKey = getRegionsCacheKey();
 
     if (!options?.force) {
       const cachedRegions = readCachedJson<RegionResponse[]>(cacheKey);
@@ -554,6 +569,35 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
     [regions, selectedRegionId]
   );
 
+  const requireRegionReverification = useCallback((regionId: number) => {
+    const cacheKey = getRegionsCacheKey();
+    const nextRegions = markRegionVerificationRequired(regions, regionId);
+    const cachedRegions = readCachedJson<RegionResponse[]>(cacheKey);
+    const nextCachedRegions = cachedRegions
+      ? markRegionVerificationRequired(cachedRegions.map(normalizeRegion), regionId)
+      : null;
+    const nextRegionsCache =
+      nextCachedRegions && nextCachedRegions.length > nextRegions.length ? nextCachedRegions : nextRegions;
+
+    if (nextRegions.length > 0) {
+      setRegions(nextRegions);
+    }
+    if (nextRegionsCache.length > 0) {
+      writeCachedJson(cacheKey, nextRegionsCache);
+    }
+
+    const nextSelectedRegion =
+      nextRegions.find((region) => region.region_id === regionId) ??
+      nextCachedRegions?.find((region) => region.region_id === regionId) ??
+      null;
+    const currentSelectedRegionId = selectedRegionId ?? getSelectedRegionId();
+    if (currentSelectedRegionId === regionId && nextSelectedRegion) {
+      saveSelectedRegion(nextSelectedRegion);
+    }
+
+    setReverifyRegionId(regionId);
+  }, [regions, selectedRegionId]);
+
   const canAddRegion = regions.filter((region) => region.primary).length < 2;
   const highlightedListing = listings[0] ?? null;
   const highlightedListingDeal = highlightedListing
@@ -594,18 +638,30 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
 
   const handleSelectRegion = async (regionId: number) => {
     try {
+      setError("");
+      setVerificationFailedRegionId(null);
       const targetRegion = regions.find((region) => region.region_id === regionId) ?? null;
+      const needsVerification = targetRegion && (!targetRegion.verified_at || reverifyRegionId === regionId);
 
-      if (targetRegion && (!targetRegion.verified_at || reverifyRegionId === regionId)) {
-        await verifyRegion(regionId);
+      if (needsVerification) {
+        try {
+          await verifyRegion(regionId);
+        } catch {
+          requireRegionReverification(regionId);
+          setVerificationFailedRegionId(regionId);
+          return;
+        }
+
         const reloaded = await loadRegions({ force: true });
         const verifiedRegion = reloaded.find((region) => region.region_id === regionId) ?? targetRegion;
         setRegions(reloaded);
         setSelectedRegionId(verifiedRegion.region_id);
         saveSelectedRegion(verifiedRegion);
         setReverifyRegionId((current) => (current === regionId ? null : current));
+        setVerificationFailedRegionId(null);
       } else {
         setSelectedRegionId(regionId);
+        setVerificationFailedRegionId(null);
         if (targetRegion) {
           saveSelectedRegion(targetRegion);
         }
@@ -616,10 +672,6 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
       setHasMore(true);
       await loadCurrentFeed(regionId);
     } catch (err) {
-      if (err instanceof ApiError && err.code === MEMBER_REGION_VERIFICATION_FAILED_CODE) {
-        return;
-      }
-
       setError(err instanceof Error ? err.message : "Failed to load listings.");
     } finally {
       setLoading(false);
@@ -857,18 +909,23 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
   }, [location.pathname, navigate]);
 
   const openRegionSheet = useCallback((options?: { requireReverification?: boolean }) => {
+    setVerificationFailedRegionId(null);
     if (options?.requireReverification) {
-      setReverifyRegionId(selectedRegionId ?? getSelectedRegionId());
+      const regionId = selectedRegionId ?? getSelectedRegionId();
+      if (regionId != null) {
+        requireRegionReverification(regionId);
+      }
     }
     setRegionSearchOpen(false);
     setRegionSheetOpen(true);
-  }, [selectedRegionId]);
+  }, [requireRegionReverification, selectedRegionId]);
 
   const openRegionSearch = useCallback(() => {
     setRegionSearchQuery("");
     setRegionSearchResults([]);
     setRegionSearchLoading(false);
     setRegionSearchMessage("");
+    setVerificationFailedRegionId(null);
     setRegionSearchOpen(true);
     setRegionSheetOpen(false);
   }, []);
@@ -929,6 +986,7 @@ export function ListingPage({ tradeRailOpen = false, initialSelectedRegion = nul
       regions={regions}
       selectedRegionId={selectedRegionId}
       reverifyRegionId={reverifyRegionId}
+      verificationFailedRegionId={verificationFailedRegionId}
       canAddRegion={canAddRegion}
       onSelectRegion={(regionId) => void handleSelectRegion(regionId)}
       onRequestDelete={setDeleteTarget}
