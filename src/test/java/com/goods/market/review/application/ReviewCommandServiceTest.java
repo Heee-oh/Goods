@@ -18,7 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ReviewCommandServiceImplTest {
+class ReviewCommandServiceTest {
 
     @Mock
     private TradeRepository tradeRepository;
@@ -27,7 +27,7 @@ class ReviewCommandServiceImplTest {
     private ReviewRepository reviewRepository;
 
     @InjectMocks
-    private ReviewCommandServiceImpl reviewCommandService;
+    private ReviewCommandService reviewCommandService;
 
     @Test
     void createReviewRejectsDuplicatePair() {

@@ -35,7 +35,7 @@ public class MemberRegionRepositoryCustomImpl implements MemberRegionRepositoryC
                 ))
                 .from(memberRegion)
                 .join(region).on(memberRegion.regionId.eq(region.id))
-                .where(memberRegion.member.id.eq(memberId),
+                .where(memberRegion.memberId.eq(memberId),
                         memberRegion.primary.isTrue())
                 .fetch();
     }

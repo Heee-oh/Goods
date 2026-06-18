@@ -36,13 +36,10 @@ class InterestRepositoryCustomImplTest {
         Member other = memberJpaRepository.save(new Member("m2", new PhoneNumber("01020000002")));
 
         log.info("관심목록 저장");
-        member.addInterest(new Interest(10L));
-        member.addInterest(new Interest(20L));
-        member.addInterest(new Interest(30L));
-        other.addInterest(new Interest(999L));
-
-        memberJpaRepository.save(member);
-        memberJpaRepository.save(other);
+        interestRepository.save(new Interest(10L, member.getId()));
+        interestRepository.save(new Interest(20L, member.getId()));
+        interestRepository.save(new Interest(30L, member.getId()));
+        interestRepository.save(new Interest(999L, other.getId()));
 
         //member의 최신 순 2개만 조회
         Slice<InterestDto> firstPage = interestRepository.findAllByMemberId(

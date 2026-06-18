@@ -6,7 +6,7 @@ import com.goods.market.listing.domain.TransactionType;
 import com.goods.market.listing.exception.ListingAccessDeniedException;
 import com.goods.market.listing.exception.ListingBadRequestException;
 import com.goods.market.listing.exception.ListingConflictException;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.infrastructure.memberRegion.MemberRegionJpaRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -29,23 +29,23 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ListingCommandServiceImplTest {
+class ListingCommandServiceTest {
 
     @Mock
-    private ListingJpaRepository listingJpaRepository;
+    private ListingRepository listingRepository;
 
     @Mock
     private MemberRegionJpaRepository memberRegionJpaRepository;
 
     @InjectMocks
-    private ListingCommandServiceImpl listingCommandService;
+    private ListingCommandService listingCommandService;
 
     @Test
     @DisplayName("임시 글을 생성하면 빈 초안이 저장되고 ID를 반환한다")
     void createDraftSuccess() {
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(1L, 1))
+        when(memberRegionJpaRepository.findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNull(1L, 1))
                 .thenReturn(Optional.of(new MemberRegion(1, true, new BigDecimal("37.5"), new BigDecimal("126.9"))));
-        when(listingJpaRepository.save(any(Listing.class))).thenAnswer(invocation -> {
+        when(listingRepository.save(any(Listing.class))).thenAnswer(invocation -> {
             Listing listing = invocation.getArgument(0);
             ReflectionTestUtils.setField(listing, "id", 101L);
             return listing;
@@ -54,7 +54,7 @@ class ListingCommandServiceImplTest {
         Long listingId = listingCommandService.createDraft(1L, 1);
 
         ArgumentCaptor<Listing> captor = ArgumentCaptor.forClass(Listing.class);
-        verify(listingJpaRepository).save(captor.capture());
+        verify(listingRepository).save(captor.capture());
         Listing saved = captor.getValue();
 
         assertThat(listingId).isEqualTo(101L);
@@ -68,7 +68,7 @@ class ListingCommandServiceImplTest {
     @DisplayName("수정 요청자가 작성자가 아니면 접근 거부 예외가 발생한다")
     void updateFailsWhenRequesterIsNotSeller() {
         Listing listing = createDraftListing(2L);
-        when(listingJpaRepository.findActiveByIdWithImages(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveByIdForEdit(1L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> listingCommandService.update(1L, 1L, fullUpdateCommand()))
                 .isInstanceOf(ListingAccessDeniedException.class);
@@ -79,7 +79,7 @@ class ListingCommandServiceImplTest {
     void publishFailsWhenAlreadyPublished() {
         Listing listing = createDraftListing(1L);
         listing.publish();
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(1L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> listingCommandService.publish(1L, 1L))
                 .isInstanceOf(ListingConflictException.class);
@@ -90,7 +90,7 @@ class ListingCommandServiceImplTest {
     void reserveFailsWhenBuyerIdIsNull() {
         Listing listing = createDraftListing(1L);
         listing.publish();
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(1L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> listingCommandService.reserve(1L, 1L, null))
                 .isInstanceOf(ListingBadRequestException.class);
@@ -100,7 +100,7 @@ class ListingCommandServiceImplTest {
     @DisplayName("카테고리 ID가 유효하지 않으면 수정 시 잘못된 요청 예외가 발생한다")
     void updateFailsWhenCategoryInvalid() {
         Listing listing = createDraftListing(1L);
-        when(listingJpaRepository.findActiveByIdWithImages(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveByIdForEdit(1L)).thenReturn(Optional.of(listing));
 
         ListingUpdateCommand command = new ListingUpdateCommand(
                 "title",
@@ -123,7 +123,7 @@ class ListingCommandServiceImplTest {
     @DisplayName("업데이트 내용이 하나라도 null이면 예외가 발생한다.")
     void updateFailsWhenCommandInvalid() {
         Listing listing = createDraftListing(1L);
-        when(listingJpaRepository.findActiveByIdWithImages(1L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveByIdForEdit(1L)).thenReturn(Optional.of(listing));
 
         ListingUpdateCommand command = new ListingUpdateCommand(
                 "title",

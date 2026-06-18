@@ -1,13 +1,117 @@
 package com.goods.market.chat.application;
 
+import com.goods.market.chat.domain.ChatRoom;
+import com.goods.market.chat.domain.ChatRoomStatus;
+import com.goods.market.chat.exception.ChatRoomNotFoundException;
+import com.goods.market.chat.infrastructure.ChatMessageRepository;
+import com.goods.market.chat.infrastructure.ChatRoomRepository;
+import com.goods.market.chat.application.dto.ChatMessageItemDto;
+import com.goods.market.chat.application.dto.ChatRoomAppointmentDto;
 import com.goods.market.chat.application.dto.ChatRoomDetailDto;
 import com.goods.market.chat.application.dto.ChatRoomSummaryDto;
-
+import com.goods.market.trade.domain.AppointmentStatus;
+import com.goods.market.trade.infrastructure.AppointmentRepository;
+import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.ListingImage;
+import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.member.domain.Member;
+import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import java.util.List;
+import java.util.Comparator;
+import java.util.Objects;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-public interface ChatQueryService {
+@Service
+@Transactional(readOnly = true)
+@RequiredArgsConstructor
+public class ChatQueryService {
 
-    List<ChatRoomSummaryDto> getChatRooms(Long memberId);
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
+    private final ListingJpaRepository listingJpaRepository;
+    private final MemberJpaRepository memberJpaRepository;
+    private final AppointmentRepository appointmentRepository;
 
-    ChatRoomDetailDto getChatRoom(Long memberId, Long chatRoomId);
+
+    public List<ChatRoomSummaryDto> getChatRooms(Long memberId) {
+        return chatRoomRepository.findSummariesByMemberId(memberId);
+    }
+    public ChatRoomDetailDto getChatRoom(Long memberId, Long chatRoomId) {
+        ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
+                .filter(room -> room.getStatus() == ChatRoomStatus.ACTIVE)
+                .filter(room -> room.isParticipant(memberId))
+                .orElseThrow(() -> new ChatRoomNotFoundException("채팅방을 찾을 수 없습니다."));
+
+        Listing listing = listingJpaRepository.findByIdWithImages(chatRoom.getListingId())
+                .orElse(null);
+
+        String listingImageUrl = (listing != null)
+                ? listing.getImages().stream()
+                .sorted(Comparator.comparingInt(ListingImage::getSortOrder))
+                .map(ListingImage::getImageUrl)
+                .findFirst()
+                .orElse(null)
+                : null;
+
+        String listingStatus = listing != null ? listing.getStatus().name() : null;
+        String listingTransactionType = listing != null && listing.getPrice() != null
+                ? listing.getPrice().getTransactionType().getValue()
+                : null;
+
+        Long partnerId = getPartnerId(chatRoom, memberId);
+        Member partner = memberJpaRepository.findById(partnerId)
+                .orElse(null);
+
+        List<ChatMessageItemDto> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAscIdAsc(chatRoomId)
+                .stream()
+                .map(message -> new ChatMessageItemDto(
+                        message.getId(),
+                        message.getSenderId(),
+                        message.getType(),
+                        message.getContent(),
+                        message.getCreatedAt()
+                ))
+                .toList();
+
+        ChatRoomAppointmentDto currentAppointment = appointmentRepository
+                .findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
+                        chatRoom.getListingId(),
+                        chatRoom.getBuyerId(),
+                        AppointmentStatus.SCHEDULED
+                )
+                .map(appointment -> new ChatRoomAppointmentDto(
+                        appointment.getId(),
+                        appointment.getMeetAt(),
+                        appointment.getReminderMinutes()
+                ))
+                .orElse(null);
+
+        return new ChatRoomDetailDto(
+                chatRoom.getId(),
+                chatRoom.getListingId(),
+                listingImageUrl,
+                listingStatus,
+                listing != null ? listing.getReserverId() : null,
+                listingTransactionType,
+                chatRoom.getSellerId(),
+                partnerId,
+                partner != null ? partner.getNickname() : "상대 사용자",
+                partner != null ? partner.getProfileImageUrl() : null,
+                partner != null ? partner.getSmileScore() : null,
+                listing != null ? listing.getTitle() : "상품 정보를 불러올 수 없어요.",
+                listing != null && listing.getPrice() != null ? listing.getPrice().getPriceAmount() : null,
+                currentAppointment,
+                messages
+        );
+    }
+
+    private Long getPartnerId(ChatRoom chatRoom, Long memberId) {
+        if (Objects.equals(chatRoom.getSellerId(), memberId)) {
+            return chatRoom.getBuyerId();
+        }
+
+        return chatRoom.getSellerId();
+    }
 }

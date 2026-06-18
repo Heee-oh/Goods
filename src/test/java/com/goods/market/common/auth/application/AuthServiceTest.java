@@ -7,8 +7,9 @@ import com.goods.market.common.auth.exception.AuthConflictException;
 import com.goods.market.common.auth.exception.AuthUnauthorizedException;
 import com.goods.market.common.auth.jwt.JwtTokenProvider;
 import com.goods.market.member.domain.Member;
+import com.goods.market.member.domain.MemberRegionRepository;
+import com.goods.market.member.domain.MemberRepository;
 import com.goods.market.member.domain.PhoneNumber;
-import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,22 +27,25 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceImplTest {
+class AuthServiceTest {
 
     @Mock
-    private MemberJpaRepository memberJpaRepository;
+    private MemberRepository memberRepository;
+
+    @Mock
+    private MemberRegionRepository memberRegionRepository;
 
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
     @InjectMocks
-    private AuthServiceImpl authService;
+    private AuthService authService;
 
     @Test
     @DisplayName("signup: 새 전화번호면 가입 후 토큰을 반환한다")
     void signupSuccess() {
-        when(memberJpaRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.empty());
-        when(memberJpaRepository.save(any(Member.class))).thenAnswer(invocation -> {
+        when(memberRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.empty());
+        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> {
             Member member = invocation.getArgument(0);
             ReflectionTestUtils.setField(member, "id", 101L);
             return member;
@@ -60,7 +64,7 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("signup: 이미 존재하는 전화번호면 충돌 예외를 던진다")
     void signupConflict() {
-        when(memberJpaRepository.findByPhoneNumber(any(PhoneNumber.class)))
+        when(memberRepository.findByPhoneNumber(any(PhoneNumber.class)))
                 .thenReturn(Optional.of(new Member("dup", new PhoneNumber("01012345678"))));
 
         assertThatThrownBy(() -> authService.signup(new AuthSignupCommand("01012345678", "alice", 1)))
@@ -73,7 +77,7 @@ class AuthServiceImplTest {
         Member member = new Member("user", new PhoneNumber("01012345678"));
         ReflectionTestUtils.setField(member, "id", 10L);
 
-        when(memberJpaRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.of(member));
+        when(memberRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.of(member));
         when(jwtTokenProvider.createAccessToken(10L)).thenReturn("token-10");
         when(jwtTokenProvider.getAccessTokenValiditySeconds()).thenReturn(3600L);
 
@@ -86,7 +90,7 @@ class AuthServiceImplTest {
     @Test
     @DisplayName("login: 없는 전화번호면 인증 예외를 던진다")
     void loginFailWhenNotFound() {
-        when(memberJpaRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.empty());
+        when(memberRepository.findByPhoneNumber(any(PhoneNumber.class))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.login(new AuthLoginCommand("01000000000")))
                 .isInstanceOf(AuthUnauthorizedException.class);

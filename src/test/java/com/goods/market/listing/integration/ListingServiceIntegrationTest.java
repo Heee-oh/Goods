@@ -5,10 +5,10 @@ import com.goods.market.listing.application.ListingQueryService;
 import com.goods.market.listing.application.dto.ListingDetailDto;
 import com.goods.market.listing.application.dto.ListingUpdateCommand;
 import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.listing.domain.Status;
 import com.goods.market.listing.domain.TransactionType;
 import com.goods.market.listing.exception.ListingNotFoundException;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.domain.Member;
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.domain.PhoneNumber;
@@ -37,7 +37,7 @@ class ListingServiceIntegrationTest {
     private ListingQueryService listingQueryService;
 
     @Autowired
-    private ListingJpaRepository listingJpaRepository;
+    private ListingRepository listingRepository;
 
     @Autowired
     private MemberJpaRepository memberJpaRepository;
@@ -51,7 +51,7 @@ class ListingServiceIntegrationTest {
         saveMemberWithRegion(100L, "seller", "01012345678", 1, new BigDecimal("37.5665"), new BigDecimal("126.9780"));
 
         Long listingId = listingCommandService.createDraft(100L,1);
-        Listing draft = listingJpaRepository.findByIdAndDeletedAtIsNull(listingId).orElseThrow();
+        Listing draft = listingRepository.findActiveById(listingId).orElseThrow();
         assertThat(draft.getOriginLat()).isEqualTo(new BigDecimal("37.5665"));
         assertThat(draft.getOriginLng()).isEqualTo(new BigDecimal("126.9780"));
 
@@ -67,7 +67,7 @@ class ListingServiceIntegrationTest {
                 List.of("https://img/1.png", "https://img/2.png")
         ));
 
-        ListingDetailDto detail = listingQueryService.getListing(listingId, 100L);
+        ListingDetailDto detail = listingQueryService.getListing(listingId, 100L, null);
 
         assertThat(detail.listingId()).isEqualTo(listingId);
         assertThat(detail.sellerId()).isEqualTo(100L);
@@ -98,7 +98,7 @@ class ListingServiceIntegrationTest {
         listingCommandService.reserve(100L, listingId, 200L);
         listingCommandService.markSoldOut(100L, listingId, 200L);
 
-        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(listingId).orElseThrow();
+        Listing listing = listingRepository.findActiveById(listingId).orElseThrow();
 
         assertThat(listing.getStatus()).isEqualTo(Status.SOLD_OUT);
         assertThat(listing.getBuyerId()).isEqualTo(200L);
@@ -113,8 +113,8 @@ class ListingServiceIntegrationTest {
 
         listingCommandService.remove(100L, listingId);
 
-        assertThat(listingJpaRepository.findByIdAndDeletedAtIsNull(listingId)).isEmpty();
-        assertThatThrownBy(() -> listingQueryService.getListing(listingId, 100L))
+        assertThat(listingRepository.findActiveById(listingId)).isEmpty();
+        assertThatThrownBy(() -> listingQueryService.getListing(listingId, 100L, null))
                 .isInstanceOf(ListingNotFoundException.class);
     }
 
@@ -128,7 +128,8 @@ class ListingServiceIntegrationTest {
         Member member = new Member(nickname, new PhoneNumber(phoneNumber));
         ReflectionTestUtils.setField(member, "id", memberId);
         MemberRegion memberRegion = new MemberRegion(regionId, true, lat, lng);
-        member.addRegion(memberRegion);
         memberJpaRepository.save(member);
+        memberRegion.updateMember(memberId);
+        memberRegionJpaRepository.save(memberRegion);
     }
 }

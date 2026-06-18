@@ -14,4 +14,5 @@ import java.util.Optional;
 public interface MemberJpaRepository extends JpaRepository<Member, Long>, MemberRepositoryCustom {
     @Query("SELECT m FROM Member m WHERE m.phoneNumber = :phoneNumber AND m.status = 'ACTIVE'")
     Optional<Member> findByPhoneNumber(PhoneNumber phoneNumber);
+
 }

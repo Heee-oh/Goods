@@ -13,14 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 public interface InterestJpaRepository extends JpaRepository<Interest, Long>, InterestRepositoryCustom {
 
     @Modifying
-    @Query("DELETE FROM Interest i WHERE i.listingId = :listingId AND i.member.id = :memberId")
+    @Query("DELETE FROM Interest i WHERE i.listingId = :listingId AND i.memberId = :memberId")
     int deleteByListingIdAndMemberId(
             @Param("listingId") Long listingId,
             @Param("memberId") Long memberId
     );
 
     @Transactional(readOnly = true)
-    @Query("SELECT COUNT(i) > 0 FROM Interest i WHERE i.listingId = :listingId AND i.member.id = :memberId")
+    @Query("SELECT COUNT(i) > 0 FROM Interest i WHERE i.listingId = :listingId AND i.memberId = :memberId")
     boolean existsByListingIdAndMemberId(
             @Param("listingId") Long listingId,
             @Param("memberId") Long memberId

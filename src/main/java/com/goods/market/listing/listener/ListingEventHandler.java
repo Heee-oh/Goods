@@ -3,10 +3,10 @@ package com.goods.market.listing.listener;
 import com.goods.market.common.event.events.TradeAppointmentCanceledEvent;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
 import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.listing.domain.Status;
 import com.goods.market.listing.exception.ListingConflictException;
 import com.goods.market.listing.exception.ListingNotFoundException;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -15,11 +15,11 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ListingEventHandler {
 
-    private final ListingJpaRepository listingJpaRepository;
+    private final ListingRepository listingRepository;
 
     @EventListener
     public void handle(TradeAppointmentScheduledEvent event) {
-        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(event.listingId())
+        Listing listing = listingRepository.findActiveById(event.listingId())
                 .orElseThrow(ListingNotFoundException::new);
 
         if (!listing.getSellerId().equals(event.sellerId())) {
@@ -43,7 +43,7 @@ public class ListingEventHandler {
 
     @EventListener
     public void handle(TradeAppointmentCanceledEvent event) {
-        listingJpaRepository.findByIdAndDeletedAtIsNull(event.listingId())
+        listingRepository.findActiveById(event.listingId())
                 .ifPresent(listing -> {
                     if (!event.buyerId().equals(listing.getReserverId())) {
                         return;

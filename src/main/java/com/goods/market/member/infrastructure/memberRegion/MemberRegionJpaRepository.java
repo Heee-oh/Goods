@@ -12,17 +12,17 @@ public interface MemberRegionJpaRepository extends JpaRepository<MemberRegion, L
 
     Optional<MemberRegion> findMemberRegionByIdAndMemberId(Long id, Long memberId);
 
-    Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(Long memberId, Integer regionId);
+    Optional<MemberRegion> findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNull(Long memberId, Integer regionId);
 
-    Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNullAndPrimaryTrue(Long memberId, Integer regionId);
+    Optional<MemberRegion> findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNullAndPrimaryTrue(Long memberId, Integer regionId);
 
-    Optional<MemberRegion> findFirstByMember_IdAndRegionIdAndPrimaryTrue(Long memberId, Integer regionId);
+    Optional<MemberRegion> findFirstByMemberIdAndRegionIdAndPrimaryTrue(Long memberId, Integer regionId);
 
-    Optional<MemberRegion> findFirstByMember_IdAndRegionId(Long memberId, Integer regionId);
+    Optional<MemberRegion> findFirstByMemberIdAndRegionId(Long memberId, Integer regionId);
 
-    boolean existsByMember_IdAndRegionIdAndPrimaryTrue(Long memberId, Integer regionId);
+    boolean existsByMemberIdAndRegionIdAndPrimaryTrue(Long memberId, Integer regionId);
 
-    long countByMember_IdAndPrimaryTrue(Long memberId);
+    long countByMemberIdAndPrimaryTrue(Long memberId);
 
-    void deleteByMember_Id(Long memberId);
+    void deleteByMemberId(Long memberId);
 }

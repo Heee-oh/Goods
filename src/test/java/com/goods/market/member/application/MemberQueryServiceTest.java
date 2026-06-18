@@ -27,7 +27,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MemberQueryServiceImplTest {
+class MemberQueryServiceTest {
 
     @Mock
     private MemberJpaRepository memberRepository;
@@ -39,7 +39,7 @@ class MemberQueryServiceImplTest {
     private InterestJpaRepository interestRepository;
 
     @InjectMocks
-    private MemberQueryServiceImpl memberQueryService;
+    private MemberQueryService memberQueryService;
     @Test
     @DisplayName("내 정보 조회 시 레포지토리에서 데이터를 가져와 정상적으로 반환한다")
     void getMeDelegatesToRepository() {

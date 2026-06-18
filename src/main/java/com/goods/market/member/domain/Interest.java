@@ -1,6 +1,5 @@
 package com.goods.market.member.domain;
 
-import com.github.f4b6a3.tsid.TsidCreator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -16,20 +15,15 @@ public class Interest {
     @Column(name = "interest_id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false, updatable = false)
-    private Member member;
+    @Column(name = "member_id", nullable = false, updatable = false)
+    private Long memberId;
 
     @Column(name = "listing_id", nullable = false, updatable = false)
     private Long listingId;
 
 
-
-    public Interest(Long listingId) {
+    public Interest(Long listingId, Long memberId) {
         this.listingId = listingId;
-    }
-
-    public void updateMember(Member member) {
-        this.member = member;
+        this.memberId = memberId;
     }
 }

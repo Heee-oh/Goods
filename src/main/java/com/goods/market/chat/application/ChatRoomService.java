@@ -1,7 +1,6 @@
 package com.goods.market.chat.application;
 
 import com.goods.market.chat.exception.ChatRoomParticipantException;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.ChatStartedEvent;
 import com.goods.market.chat.domain.ChatRead;
@@ -10,6 +9,7 @@ import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.exception.ChatRoomInactiveException;
 import com.goods.market.chat.exception.ChatRoomNotFoundException;
 import com.goods.market.listing.domain.Listing;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.listing.domain.Status;
 import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
@@ -25,12 +25,12 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatReadRepository chatReadRepository;
-    private final ListingJpaRepository listingJpaRepository;
+    private final ListingRepository listingRepository;
     private final DomainEventPublisher domainEventPublisher;
 
     @Transactional
     public Long getOrCreateChatRoom(Long listingId, Long buyerId) {
-        Listing listing = listingJpaRepository.findByIdAndDeletedAtIsNull(listingId)
+        Listing listing = listingRepository.findActiveById(listingId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("게시글을 찾을 수 없습니다."));
 
         if (listing.getStatus() == Status.SOLD_OUT) {

@@ -31,9 +31,8 @@ public class MemberRegion {
     @Column(name = "region_id", nullable = false)
     private Integer regionId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false, updatable = false)
-    private Member member;
+    @Column(name = "member_id", nullable = false)
+    private Long memberId;
 
     @Column(name = "is_primary", nullable = false)
     private boolean primary;
@@ -106,8 +105,8 @@ public class MemberRegion {
         }
     }
 
-    public void updateMember(Member member) {
-        this.member = member;
+    public void updateMember(Long memberId) {
+        this.memberId = memberId;
     }
 
     public void unsetPrimary() {

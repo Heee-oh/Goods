@@ -14,7 +14,7 @@ import com.goods.market.common.event.events.TradeCompletedEvent;
 import com.goods.market.common.event.events.ListingCreatedEvent;
 import com.goods.market.common.event.events.ListingReservationCanceledEvent;
 import com.goods.market.common.event.events.ListingSoldOutEvent;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.member.domain.Member;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import com.goods.market.notification.domain.KeywordSubscription;
@@ -41,7 +41,7 @@ public class NotificationEventHandler {
     private final AppointmentRepository appointmentRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final MemberJpaRepository memberJpaRepository;
-    private final ListingJpaRepository listingJpaRepository;
+    private final ListingRepository listingRepository;
     private final SimpMessageSendingOperations messagingTemplate;
 
     @EventListener
@@ -138,7 +138,7 @@ public class NotificationEventHandler {
     }
 
     private void sendReviewRequest(TradeCompletedEvent event) {
-        String listingTitle = listingJpaRepository.findByIdAndDeletedAtIsNull(event.listingId())
+        String listingTitle = listingRepository.findActiveById(event.listingId())
                 .map(listing -> listing.getTitle() == null ? "" : listing.getTitle())
                 .orElse("");
         String sellerNickname = memberJpaRepository.findById(event.sellerId())

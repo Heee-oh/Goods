@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TradeCommandServiceImplTest {
+class TradeCommandServiceTest {
 
     @Mock
     private TradeRepository tradeRepository;
@@ -32,7 +32,7 @@ class TradeCommandServiceImplTest {
     private DomainEventPublisher domainEventPublisher;
 
     @InjectMocks
-    private TradeCommandServiceImpl tradeCommandService;
+    private TradeCommandService tradeCommandService;
 
     @Test
     void completeCreatesTradeAndPublishesExchangeEvent() {

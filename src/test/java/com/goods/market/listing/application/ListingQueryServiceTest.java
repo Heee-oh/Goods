@@ -2,6 +2,7 @@ package com.goods.market.listing.application;
 
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.listing.application.dto.ListingItemDto;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.listing.infrastructure.ListingJpaRepository;
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
@@ -28,7 +29,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class ListingQueryServiceImplTest {
+class ListingQueryServiceTest {
+
+    @Mock
+    private ListingRepository listingRepository;
 
     @Mock
     private ListingJpaRepository listingJpaRepository;
@@ -46,7 +50,7 @@ class ListingQueryServiceImplTest {
     private ChatRoomRepository chatRoomRepository;
 
     @InjectMocks
-    private ListingQueryServiceImpl listingQueryService;
+    private ListingQueryService listingQueryService;
 
     @Test
     void getListingsUsesMemberRegionCoordinatesAsOrigin() {
@@ -56,13 +60,13 @@ class ListingQueryServiceImplTest {
         BigDecimal lat = new BigDecimal("37.5665");
         BigDecimal lng = new BigDecimal("126.9780");
 
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
+        when(memberRegionJpaRepository.findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
                 .thenReturn(Optional.of(new MemberRegion(regionId, true, lat, lng)));
         Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingJpaRepository.findListings(eq(memberId), eq(regionId), eq(lat), eq(lng), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class)))
                 .thenReturn(slice);
 
-        listingQueryService.getListings(memberId, regionId, lastListingId);
+        listingQueryService.getListings(memberId, regionId, lastListingId, null, null);
 
         verify(listingJpaRepository).findListings(eq(memberId), eq(regionId), eq(lat), eq(lng), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class));
     }
@@ -73,13 +77,13 @@ class ListingQueryServiceImplTest {
         Integer regionId = 11000;
         Long lastListingId = 99L;
 
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
+        when(memberRegionJpaRepository.findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNull(memberId, regionId))
                 .thenReturn(Optional.of(new MemberRegion(regionId, true)));
         Slice<ListingItemDto> slice = new SliceImpl<>(List.of(), PageRequest.of(0, 20), false);
         when(listingJpaRepository.findListings(eq(memberId), eq(regionId), isNull(), isNull(), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class)))
                 .thenReturn(slice);
 
-        listingQueryService.getListings(memberId, regionId, lastListingId);
+        listingQueryService.getListings(memberId, regionId, lastListingId, null, null);
 
         verify(listingJpaRepository).findListings(eq(memberId), eq(regionId), isNull(), isNull(), eq(lastListingId), isNull(), isNull(), eq(20), any(Pageable.class));
     }

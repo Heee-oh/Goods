@@ -5,7 +5,7 @@ import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.listing.domain.Listing;
 import com.goods.market.listing.domain.TransactionType;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.listing.domain.ListingRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ class ChatRoomServiceTest {
     private ChatReadRepository chatReadRepository;
 
     @Mock
-    private ListingJpaRepository listingJpaRepository;
+    private ListingRepository listingRepository;
 
     @InjectMocks
     private ChatRoomService chatRoomService;
@@ -38,7 +38,7 @@ class ChatRoomServiceTest {
     @Test
     void getOrCreateChatRoomRejectsSoldOutListing() {
         Listing listing = createSoldOutListing();
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> chatRoomService.getOrCreateChatRoom(10L, 2L))
                 .isInstanceOf(ChatRoomInactiveException.class)

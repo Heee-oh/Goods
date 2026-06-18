@@ -9,7 +9,7 @@ import com.goods.market.chat.infrastructure.ChatReadRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
 import com.goods.market.listing.domain.Listing;
 import com.goods.market.listing.domain.TransactionType;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.listing.domain.ListingRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class ChatMessageServiceTest {
     private ChatReadRepository chatReadRepository;
 
     @Mock
-    private ListingJpaRepository listingJpaRepository;
+    private ListingRepository listingRepository;
 
     @InjectMocks
     private ChatMessageService chatMessageService;
@@ -48,7 +48,7 @@ class ChatMessageServiceTest {
         Listing listing = createSoldOutListing();
 
         when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> chatMessageService.saveMessage(
                 new ChatMessageCreateDto(20L, MessageType.TEXT, "안녕하세요"),

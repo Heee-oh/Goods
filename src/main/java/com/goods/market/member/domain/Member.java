@@ -39,12 +39,6 @@ public class Member extends BaseTimeEntity {
     @Column(name = "profile_image", length = 500)
     private String profileImageUrl;
 
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<MemberRegion> regions = new ArrayList<>();
-
-    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Interest> interests = new ArrayList<>();
-
     @Column(name = "withdrawn_at")
     private Instant withdrawnAt;
 
@@ -112,29 +106,6 @@ public class Member extends BaseTimeEntity {
         }
 
         status = MemberStatus.ACTIVE;
-    }
-
-    public void addRegion(MemberRegion region) {
-        ensureActive();
-
-        regions.add(region);
-        region.updateMember(this);
-    }
-
-    public void removeRegionFromPrimary(Integer regionId) {
-        ensureActive();
-
-        MemberRegion region = regions.stream()
-                .filter(r -> r.getRegionId().equals(regionId))
-                .findFirst()
-                .orElseThrow(() -> new EntityNotFoundException("Region not found"));
-
-        region.unsetPrimary();
-    }
-
-    public void addInterest(Interest interest) {
-        this.interests.add(interest);
-        interest.updateMember(this);
     }
 
     private void ensureActive() {

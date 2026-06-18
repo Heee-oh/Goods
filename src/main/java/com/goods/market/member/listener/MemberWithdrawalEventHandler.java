@@ -22,7 +22,7 @@ public class MemberWithdrawalEventHandler {
     public void handle(MemberWithdrawnEvent event) {
         notificationRepository.deleteByMemberId(event.memberId());
         keywordSubscriptionRepository.deleteByMemberId(event.memberId());
-        memberRegionJpaRepository.deleteByMember_Id(event.memberId());
+        memberRegionJpaRepository.deleteByMemberId(event.memberId());
         listingJpaRepository.hideAllBySellerId(event.memberId());
     }
 }

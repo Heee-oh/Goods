@@ -2,9 +2,9 @@ package com.goods.market.member.application;
 
 import com.goods.market.member.domain.MemberRegion;
 import com.goods.market.member.domain.Member;
+import com.goods.market.member.domain.MemberRegionRepository;
+import com.goods.market.member.domain.MemberRepository;
 import com.goods.market.member.domain.exception.memberRegion.MemberRegionVerificationFailedException;
-import com.goods.market.member.infrastructure.member.MemberJpaRepository;
-import com.goods.market.member.infrastructure.memberRegion.MemberRegionJpaRepository;
 import com.goods.market.region.infrastructure.RegionJpaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,19 +26,19 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class MemberRegionCommandServiceImplTest {
+class MemberRegionCommandServiceTest {
 
     @Mock
-    MemberJpaRepository memberJpaRepository;
+    MemberRepository memberRepository;
 
     @Mock
-    MemberRegionJpaRepository memberRegionJpaRepository;
+    MemberRegionRepository memberRegionRepository;
 
     @Mock
     RegionJpaRepository regionJpaRepository;
 
     @InjectMocks
-    MemberRegionCommandServiceImpl service;
+    MemberRegionCommandService service;
 
     @Test
     @DisplayName("기존 동네가 없으면 검증 완료 시 좌표를 저장한 새 memberRegion을 추가한다")
@@ -49,17 +49,18 @@ class MemberRegionCommandServiceImplTest {
         BigDecimal lng = new BigDecimal("126.9780");
 
         Member member = org.mockito.Mockito.mock(Member.class);
-        when(memberJpaRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndPrimaryTrue(memberId, regionId))
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRegionRepository.findPrimaryByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.empty());
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionId(memberId, regionId)).thenReturn(Optional.empty());
+        when(memberRegionRepository.findByMemberIdAndRegionId(memberId, regionId)).thenReturn(Optional.empty());
         when(regionJpaRepository.validateCoordinateInRegion(regionId, lat, lng)).thenReturn(true);
 
         service.verifyMemberRegionByRegionId(regionId, memberId, lat, lng);
 
         var regionCaptor = org.mockito.ArgumentCaptor.forClass(MemberRegion.class);
-        verify(member).addRegion(regionCaptor.capture());
+        verify(memberRegionRepository).save(regionCaptor.capture());
         MemberRegion savedRegion = regionCaptor.getValue();
+        org.assertj.core.api.Assertions.assertThat(savedRegion.getMemberId()).isEqualTo(memberId);
         org.assertj.core.api.Assertions.assertThat(savedRegion.getRegionId()).isEqualTo(regionId);
         org.assertj.core.api.Assertions.assertThat(savedRegion.getLat()).isEqualTo(lat);
         org.assertj.core.api.Assertions.assertThat(savedRegion.getLng()).isEqualTo(lng);
@@ -73,7 +74,7 @@ class MemberRegionCommandServiceImplTest {
         Integer regionId = 11000;
 
         MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndPrimaryTrue(memberId, regionId))
+        when(memberRegionRepository.findPrimaryByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.of(memberRegion));
 
         service.removeMemberRegion(regionId, memberId);
@@ -88,17 +89,18 @@ class MemberRegionCommandServiceImplTest {
         Integer regionId = 11000;
 
         Member member = org.mockito.Mockito.mock(Member.class);
-        when(memberJpaRepository.findById(memberId)).thenReturn(Optional.of(member));
-        when(memberRegionJpaRepository.existsByMember_IdAndRegionIdAndPrimaryTrue(memberId, regionId))
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+        when(memberRegionRepository.existsPrimaryByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(false);
-        when(memberRegionJpaRepository.countByMember_IdAndPrimaryTrue(memberId)).thenReturn(1L);
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionId(memberId, regionId))
+        when(memberRegionRepository.countPrimaryByMemberId(memberId)).thenReturn(1L);
+        when(memberRegionRepository.findByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.empty());
 
         service.addMemberRegion(regionId, memberId);
 
         var regionCaptor = org.mockito.ArgumentCaptor.forClass(MemberRegion.class);
-        verify(member).addRegion(regionCaptor.capture());
+        verify(memberRegionRepository).save(regionCaptor.capture());
+        org.assertj.core.api.Assertions.assertThat(regionCaptor.getValue().getMemberId()).isEqualTo(memberId);
         org.assertj.core.api.Assertions.assertThat(regionCaptor.getValue().isVerified()).isFalse();
         org.assertj.core.api.Assertions.assertThat(regionCaptor.getValue().getRegionId()).isEqualTo(regionId);
     }
@@ -113,9 +115,10 @@ class MemberRegionCommandServiceImplTest {
 
         MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
         when(memberRegion.getRegionId()).thenReturn(regionId);
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionIdAndPrimaryTrue(memberId, regionId))
+        when(memberRepository.findById(memberId)).thenReturn(Optional.of(org.mockito.Mockito.mock(Member.class)));
+        when(memberRegionRepository.findPrimaryByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.empty());
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionId(memberId, regionId))
+        when(memberRegionRepository.findByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.of(memberRegion));
         when(regionJpaRepository.validateCoordinateInRegion(regionId, lat, lng)).thenReturn(true);
 
@@ -134,16 +137,16 @@ class MemberRegionCommandServiceImplTest {
 
         MemberRegion memberRegion = org.mockito.Mockito.mock(MemberRegion.class);
 
-        when(memberRegionJpaRepository.existsByMember_IdAndRegionIdAndPrimaryTrue(memberId, regionId))
+        when(memberRegionRepository.existsPrimaryByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(false);
-        when(memberRegionJpaRepository.countByMember_IdAndPrimaryTrue(memberId)).thenReturn(1L);
-        when(memberRegionJpaRepository.findFirstByMember_IdAndRegionId(memberId, regionId))
+        when(memberRegionRepository.countPrimaryByMemberId(memberId)).thenReturn(1L);
+        when(memberRegionRepository.findByMemberIdAndRegionId(memberId, regionId))
                 .thenReturn(Optional.of(memberRegion));
 
         service.addMemberRegion(regionId, memberId);
 
         verify(memberRegion).reactivateUnverified();
-        verifyNoInteractions(memberJpaRepository);
+        verifyNoInteractions(memberRepository);
     }
 
     @Test
@@ -162,6 +165,6 @@ class MemberRegionCommandServiceImplTest {
         ).isInstanceOf(MemberRegionVerificationFailedException.class);
 
         verify(regionJpaRepository).validateCoordinateInRegion(regionId, lat, lng);
-        verifyNoInteractions(memberRegionJpaRepository, memberJpaRepository);
+        verifyNoInteractions(memberRepository);
     }
 }

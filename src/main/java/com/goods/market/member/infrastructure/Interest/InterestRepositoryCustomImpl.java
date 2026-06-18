@@ -30,7 +30,7 @@ public class InterestRepositoryCustomImpl implements InterestRepositoryCustom {
                         qInterest.listingId
                 ))
                 .from(qInterest)
-                .where(qInterest.member.id.eq(memberId),
+                .where(qInterest.memberId.eq(memberId),
                         qInterest.id.lt(lastInterestId) // 최신순으로 non-offset
                 )
                 .orderBy(qInterest.id.desc())

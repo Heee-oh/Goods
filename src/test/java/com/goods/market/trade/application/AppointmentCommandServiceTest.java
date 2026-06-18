@@ -11,7 +11,7 @@ import com.goods.market.trade.domain.Appointment;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.exception.AppointmentBadRequestException;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
-import com.goods.market.listing.infrastructure.ListingJpaRepository;
+import com.goods.market.listing.domain.ListingRepository;
 import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import java.time.Instant;
 import java.util.Optional;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AppointmentCommandServiceImplTest {
+class AppointmentCommandServiceTest {
 
     @Mock
     private AppointmentRepository appointmentRepository;
@@ -39,7 +39,7 @@ class AppointmentCommandServiceImplTest {
     private ChatRoomRepository chatRoomRepository;
 
     @Mock
-    private ListingJpaRepository listingJpaRepository;
+    private ListingRepository listingRepository;
 
     @Mock
     private MemberJpaRepository memberJpaRepository;
@@ -48,7 +48,7 @@ class AppointmentCommandServiceImplTest {
     private DomainEventPublisher domainEventPublisher;
 
     @InjectMocks
-    private AppointmentCommandServiceImpl appointmentCommandService;
+    private AppointmentCommandService appointmentCommandService;
 
     @Test
     void scheduleCancelsExistingAppointmentAndPublishesEvent() {
@@ -57,7 +57,7 @@ class AppointmentCommandServiceImplTest {
         Appointment existing = Appointment.schedule(10L, 1L, 2L, meetAt.minusSeconds(3600), 10);
 
         when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(createPublishedListing(1L)));
+        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(createPublishedListing(1L)));
         when(appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
                 10L,
                 2L,
@@ -91,7 +91,7 @@ class AppointmentCommandServiceImplTest {
         listing.reserve(3L);
 
         when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
                 .isInstanceOf(AppointmentBadRequestException.class)
@@ -107,7 +107,7 @@ class AppointmentCommandServiceImplTest {
         listing.markSoldOut(2L);
 
         when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingJpaRepository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(listing));
+        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
 
         assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
                 .isInstanceOf(AppointmentBadRequestException.class)
