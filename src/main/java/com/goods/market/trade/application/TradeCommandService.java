@@ -4,7 +4,7 @@ import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeCompletedEvent;
 import com.goods.market.trade.domain.Price;
 import com.goods.market.trade.domain.Trade;
-import com.goods.market.trade.infrastructure.TradeRepository;
+import com.goods.market.trade.domain.TradeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

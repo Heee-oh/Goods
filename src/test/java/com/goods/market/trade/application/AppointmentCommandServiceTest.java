@@ -1,18 +1,17 @@
 package com.goods.market.trade.application;
 
-import com.goods.market.chat.domain.ChatRoom;
-import com.goods.market.chat.infrastructure.ChatRoomRepository;
+import com.goods.market.chat.application.ChatQueryService;
+import com.goods.market.chat.application.dto.AppointmentChatRoomDto;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
-import com.goods.market.listing.domain.Listing;
-import com.goods.market.listing.domain.TransactionType;
+import com.goods.market.listing.application.ListingQueryService;
+import com.goods.market.listing.application.dto.AppointmentListingDto;
+import com.goods.market.member.application.MemberQueryService;
 import com.goods.market.trade.application.dto.AppointmentDto;
 import com.goods.market.trade.domain.Appointment;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.exception.AppointmentBadRequestException;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
-import com.goods.market.listing.domain.ListingRepository;
-import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -36,13 +35,13 @@ class AppointmentCommandServiceTest {
     private AppointmentRepository appointmentRepository;
 
     @Mock
-    private ChatRoomRepository chatRoomRepository;
+    private ChatQueryService chatQueryService;
 
     @Mock
-    private ListingRepository listingRepository;
+    private ListingQueryService listingQueryService;
 
     @Mock
-    private MemberJpaRepository memberJpaRepository;
+    private MemberQueryService memberQueryService;
 
     @Mock
     private DomainEventPublisher domainEventPublisher;
@@ -53,11 +52,12 @@ class AppointmentCommandServiceTest {
     @Test
     void scheduleCancelsExistingAppointmentAndPublishesEvent() {
         Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
-        ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
+        AppointmentChatRoomDto chatRoom = new AppointmentChatRoomDto(20L, 10L, 1L, 2L);
         Appointment existing = Appointment.schedule(10L, 1L, 2L, meetAt.minusSeconds(3600), 10);
 
-        when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(createPublishedListing(1L)));
+        when(chatQueryService.getParticipatingAppointmentChatRoom(1L, 20L)).thenReturn(chatRoom);
+        when(listingQueryService.getAppointmentListing(10L))
+                .thenReturn(new AppointmentListingDto(10L, "title", "PUBLISHED", null));
         when(appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
                 10L,
                 2L,
@@ -86,12 +86,11 @@ class AppointmentCommandServiceTest {
     @Test
     void scheduleRejectsReservedListingForOtherBuyer() {
         Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
-        ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
-        Listing listing = createPublishedListing(1L);
-        listing.reserve(3L);
+        AppointmentChatRoomDto chatRoom = new AppointmentChatRoomDto(20L, 10L, 1L, 2L);
 
-        when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
+        when(chatQueryService.getParticipatingAppointmentChatRoom(2L, 20L)).thenReturn(chatRoom);
+        when(listingQueryService.getAppointmentListing(10L))
+                .thenReturn(new AppointmentListingDto(10L, "title", "RESERVED", 3L));
 
         assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
                 .isInstanceOf(AppointmentBadRequestException.class)
@@ -101,13 +100,11 @@ class AppointmentCommandServiceTest {
     @Test
     void scheduleRejectsSoldOutListing() {
         Instant meetAt = Instant.parse("2099-05-01T10:00:00Z");
-        ChatRoom chatRoom = ChatRoom.create(10L, 1L, 2L);
-        Listing listing = createPublishedListing(1L);
-        listing.reserve(2L);
-        listing.markSoldOut(2L);
+        AppointmentChatRoomDto chatRoom = new AppointmentChatRoomDto(20L, 10L, 1L, 2L);
 
-        when(chatRoomRepository.findById(20L)).thenReturn(Optional.of(chatRoom));
-        when(listingRepository.findActiveById(10L)).thenReturn(Optional.of(listing));
+        when(chatQueryService.getParticipatingAppointmentChatRoom(2L, 20L)).thenReturn(chatRoom);
+        when(listingQueryService.getAppointmentListing(10L))
+                .thenReturn(new AppointmentListingDto(10L, "title", "SOLD_OUT", 2L));
 
         assertThatThrownBy(() -> appointmentCommandService.schedule(2L, 20L, meetAt, 30))
                 .isInstanceOf(AppointmentBadRequestException.class)
@@ -127,18 +124,4 @@ class AppointmentCommandServiceTest {
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CANCELED);
     }
 
-    private Listing createPublishedListing(Long sellerId) {
-        Listing listing = Listing.createDraft(
-                sellerId,
-                "title",
-                "description",
-                1L,
-                1000L,
-                TransactionType.SELL,
-                null,
-                java.util.List.of()
-        );
-        listing.publish();
-        return listing;
-    }
 }

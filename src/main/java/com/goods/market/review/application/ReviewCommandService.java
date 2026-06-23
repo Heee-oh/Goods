@@ -1,14 +1,11 @@
 package com.goods.market.review.application;
 
 import com.goods.market.review.domain.Review;
-import com.goods.market.review.exception.ReviewAccessDeniedException;
+import com.goods.market.review.domain.ReviewCreationPolicy;
+import com.goods.market.review.domain.ReviewRepository;
 import com.goods.market.review.exception.ReviewAlreadyExistsException;
-import com.goods.market.review.exception.ReviewExchangeNotCompletedException;
-import com.goods.market.review.exception.ReviewExchangeNotFoundException;
-import com.goods.market.review.infrastructure.ReviewRepository;
-import com.goods.market.trade.domain.Trade;
-import com.goods.market.trade.domain.TradeStatus;
-import com.goods.market.trade.infrastructure.TradeRepository;
+import com.goods.market.trade.application.TradeQueryService;
+import com.goods.market.trade.application.dto.ReviewableTrade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,35 +15,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class ReviewCommandService {
 
-    private final TradeRepository tradeRepository;
+    private final TradeQueryService tradeQueryService;
     private final ReviewRepository reviewRepository;
-    public Review create(Long tradeId, Long writerId, boolean isSeller, int rating, String comment) {
-        Trade trade = tradeRepository.findById(tradeId)
-                .orElseThrow(() -> new ReviewExchangeNotFoundException("거래를 찾을 수 없습니다."));
 
-        if (trade.getStatus() != TradeStatus.COMPLETED) {
-            throw new ReviewExchangeNotCompletedException("완료된 거래만 리뷰를 작성할 수 있습니다.");
-        }
 
-        boolean writerIsSeller = trade.getSellerId().equals(writerId);
-        boolean writerIsBuyer = trade.getBuyerId().equals(writerId);
-        if ((isSeller && !writerIsSeller) || (!isSeller && !writerIsBuyer)) {
-            throw new ReviewAccessDeniedException("리뷰 작성 권한이 없습니다.");
-        }
+    public Review create(Long tradeId, Long writerId, int rating, String comment) {
+        ReviewableTrade trade = tradeQueryService.getReviewableTrade(tradeId);
 
-        Long targetId = isSeller ? trade.getBuyerId() : trade.getSellerId();
-        if (reviewRepository.existsByTradeIdAndWriterIdAndTargetId(tradeId, writerId, targetId)) {
+        // 도메인 검증
+        ReviewCreationPolicy.validate(writerId, trade.completed(), trade.buyerId(), trade.sellerId());
+
+        Long targetId = trade.sellerId();
+        if (reviewRepository.existsByTradeIdAndWriterId(tradeId, writerId)) {
             throw new ReviewAlreadyExistsException("리뷰가 이미 존재합니다.");
         }
 
         return reviewRepository.save(Review.create(
                 tradeId,
-                trade.getListingId(),
+                trade.listingId(),
                 writerId,
                 targetId,
-                isSeller,
                 rating,
                 comment
         ));
     }
+
 }

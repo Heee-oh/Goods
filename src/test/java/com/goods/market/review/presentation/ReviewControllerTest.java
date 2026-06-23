@@ -45,8 +45,8 @@ class ReviewControllerTest {
 
     @Test
     void createReviewReturnsCreatedReview() throws Exception {
-        when(reviewCommandService.create(10L, 100L, true, 5, "good"))
-                .thenReturn(Review.create(10L, 20L, 100L, 200L, true, 5, "good"));
+        when(reviewCommandService.create(10L, 100L, 5, "good"))
+                .thenReturn(Review.create(10L, 20L, 100L, 200L,  5, "good"));
 
         mockMvc.perform(post("/api/reviews")
                         .with(authenticated(100L))
@@ -54,7 +54,6 @@ class ReviewControllerTest {
                         .content("""
                                 {
                                   "tradeId": 10,
-                                  "isSeller": true,
                                   "rating": 5,
                                   "comment": "good"
                                 }
@@ -67,7 +66,7 @@ class ReviewControllerTest {
 
     @Test
     void createReviewReturnsConflictWhenDuplicateExists() throws Exception {
-        when(reviewCommandService.create(10L, 100L, true, 5, "good"))
+        when(reviewCommandService.create(10L, 100L, 5, "good"))
                 .thenThrow(new ReviewAlreadyExistsException("리뷰가 이미 존재합니다."));
 
         mockMvc.perform(post("/api/reviews")
@@ -76,7 +75,6 @@ class ReviewControllerTest {
                         .content("""
                                 {
                                   "tradeId": 10,
-                                  "isSeller": true,
                                   "rating": 5,
                                   "comment": "good"
                                 }

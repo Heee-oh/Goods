@@ -97,16 +97,30 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "2026.06.12(금).md",
+                "file": "기능 구현 리스트.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "2026.06.12(금)"
+              "title": "기능 구현 리스트"
+            }
+          },
+          {
+            "id": "ae82ec6e0167d5c4",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "2026.06.23 (화).md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "2026.06.23 (화)"
             }
           }
         ],
-        "currentTab": 6
+        "currentTab": 7
       }
     ],
     "direction": "vertical"
@@ -268,13 +282,14 @@
       "bases:새 베이스 생성하기": false
     }
   },
-  "active": "40360aab0392db7f",
+  "active": "ae82ec6e0167d5c4",
   "lastOpenFiles": [
-    "26.05.28(목).md",
-    "2026.06.12(금).md",
-    "무제.md",
-    "코테 준비.md",
     "기능 구현 리스트.md",
+    "2026.06.23 (화).md",
+    "무제.md",
+    "2026.06.12(금).md",
+    "26.05.28(목).md",
+    "코테 준비.md",
     "26.05.14(목) 기록.md",
     "26.05.12(화) 기록.md",
     "포트폴리오 세션.md"

@@ -1,5 +1,6 @@
 package com.goods.market.listing.application;
 
+import com.goods.market.listing.application.dto.AppointmentListingDto;
 import com.goods.market.listing.application.dto.ListingDetailDto;
 import com.goods.market.listing.application.dto.ListingItemDto;
 import com.goods.market.listing.domain.Listing;
@@ -22,7 +23,9 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
@@ -59,6 +62,16 @@ public class ListingQueryService {
         Double distanceKm = resolveDistance(viewerMemberId, regionId, listing);
 
         return ListingDetailDto.from(listing, seller, regionName, chatCount, interested, distanceKm);
+    }
+
+    public AppointmentListingDto getAppointmentListing(Long listingId) {
+        return findAppointmentListing(listingId)
+                .orElseThrow(EntityNotFoundException::new);
+    }
+
+    public Optional<AppointmentListingDto> findAppointmentListing(Long listingId) {
+        return listingRepository.findActiveById(listingId)
+                .map(AppointmentListingDto::from);
     }
 
     public Slice<ListingItemDto> getListings(Long memberId, Integer regionId, Long lastListingId, String transactionType, Long sellerId) {

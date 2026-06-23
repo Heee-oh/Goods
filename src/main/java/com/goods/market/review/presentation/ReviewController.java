@@ -49,7 +49,6 @@ public class ReviewController {
                         ReviewResponse.from(reviewCommandService.create(
                                 reviewCreateRequest.tradeId(),
                                 principal.memberId(),
-                                reviewCreateRequest.isSeller(),
                                 reviewCreateRequest.rating(),
                                 reviewCreateRequest.comment()
                         )),

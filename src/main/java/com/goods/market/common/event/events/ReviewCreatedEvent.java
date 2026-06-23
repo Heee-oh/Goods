@@ -6,7 +6,6 @@ public record ReviewCreatedEvent(
         Long reviewId,
         Long sellerId,
         Long purchaserId,
-        boolean isSeller,
         int rating
 ) implements DomainEvent {
 

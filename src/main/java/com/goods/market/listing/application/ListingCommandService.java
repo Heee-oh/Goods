@@ -14,7 +14,7 @@ import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.ListingCreatedEvent;
 import com.goods.market.common.event.events.ListingReservationCanceledEvent;
 import com.goods.market.common.event.events.ListingSoldOutEvent;
-import com.goods.market.trade.infrastructure.TradeRepository;
+import com.goods.market.trade.infrastructure.TradeJpaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class ListingCommandService {
     private final ListingRepository listingRepository;
     private final MemberRegionJpaRepository memberRegionJpaRepository;
     private final DomainEventPublisher domainEventPublisher;
-    private final TradeRepository tradeRepository;
+    private final TradeJpaRepository tradeJpaRepository;
     public Long createDraft(Long sellerId, Integer regionId) {
         MemberRegion originRegion = memberRegionJpaRepository
                 .findFirstByMemberIdAndRegionIdAndVerifiedAtIsNotNull(sellerId, regionId)
@@ -144,7 +144,8 @@ public class ListingCommandService {
                 listing.getBuyerId(),
                 listing.getPrice()
         ));
-        return tradeRepository.findByListingId(listing.getId())
+
+        return tradeJpaRepository.findByListingId(listing.getId())
                 .map(com.goods.market.trade.domain.Trade::getId)
                 .orElseThrow(() -> new IllegalStateException("Trade was not created for sold out listing."));
     }

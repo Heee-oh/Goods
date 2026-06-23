@@ -29,9 +29,6 @@ public class Review extends BaseTimeEntity {
     @Column(name = "target_id", nullable = false)
     private Long targetId;
 
-    @Column(name = "is_seller", nullable = false)
-    private boolean isSeller;
-
     @Column(nullable = false)
     private int rating;
 
@@ -43,7 +40,6 @@ public class Review extends BaseTimeEntity {
             Long listingId,
             Long writerId,
             Long targetId,
-            boolean isSeller,
             int rating,
             String comment
     ) {
@@ -52,7 +48,6 @@ public class Review extends BaseTimeEntity {
         review.listingId = listingId;
         review.writerId = writerId;
         review.targetId = targetId;
-        review.isSeller = isSeller;
         review.rating = rating;
         review.comment = comment;
         return review;

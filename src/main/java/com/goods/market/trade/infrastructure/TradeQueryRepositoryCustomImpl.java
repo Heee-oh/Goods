@@ -4,10 +4,7 @@ import com.goods.market.listing.domain.QListing;
 import com.goods.market.listing.domain.QListingImage;
 import com.goods.market.member.domain.QMember;
 import com.goods.market.review.domain.QReview;
-import com.goods.market.trade.application.dto.PurchaseHistoryItemDto;
-import com.goods.market.trade.application.dto.QPurchaseHistoryItemDto;
-import com.goods.market.trade.application.dto.QSaleHistoryItemDto;
-import com.goods.market.trade.application.dto.SaleHistoryItemDto;
+import com.goods.market.trade.application.dto.*;
 import com.goods.market.trade.domain.QTrade;
 import com.goods.market.trade.domain.TradeStatus;
 import com.querydsl.jpa.JPAExpressions;
@@ -20,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 
 @Repository
@@ -112,5 +110,18 @@ public class TradeQueryRepositoryCustomImpl implements TradeQueryRepositoryCusto
         }
 
         return new SliceImpl<>(fetch, pageable, hasNext);
+    }
+
+    @Override
+    public Optional<ReviewableTrade> findReviewableTradeById(Long tradeId) {
+        ReviewableTrade reviewableTrade = factory.select(new QReviewableTrade(
+                        qTrade.status.eq(TradeStatus.COMPLETED),
+                        qTrade.listingId,
+                        qTrade.sellerId,
+                        qTrade.buyerId
+                )).from(qTrade)
+                .where(qTrade.id.eq(tradeId))
+                .fetchFirst();
+        return Optional.ofNullable(reviewableTrade);
     }
 }

@@ -5,6 +5,7 @@ import com.goods.market.chat.domain.ChatRoomStatus;
 import com.goods.market.chat.exception.ChatRoomNotFoundException;
 import com.goods.market.chat.infrastructure.ChatMessageRepository;
 import com.goods.market.chat.infrastructure.ChatRoomRepository;
+import com.goods.market.chat.application.dto.AppointmentChatRoomDto;
 import com.goods.market.chat.application.dto.ChatMessageItemDto;
 import com.goods.market.chat.application.dto.ChatRoomAppointmentDto;
 import com.goods.market.chat.application.dto.ChatRoomDetailDto;
@@ -19,6 +20,7 @@ import com.goods.market.member.infrastructure.member.MemberJpaRepository;
 import java.util.List;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,24 @@ public class ChatQueryService {
     public List<ChatRoomSummaryDto> getChatRooms(Long memberId) {
         return chatRoomRepository.findSummariesByMemberId(memberId);
     }
+
+    public AppointmentChatRoomDto getParticipatingAppointmentChatRoom(Long memberId, Long chatRoomId) {
+        return chatRoomRepository.findById(chatRoomId)
+                .filter(room -> room.getStatus() == ChatRoomStatus.ACTIVE)
+                .filter(room -> room.isParticipant(memberId))
+                .map(AppointmentChatRoomDto::from)
+                .orElseThrow(() -> new ChatRoomNotFoundException("채팅방을 찾을 수 없습니다."));
+    }
+
+    public Optional<AppointmentChatRoomDto> findActiveAppointmentChatRoom(Long listingId, Long buyerId) {
+        return chatRoomRepository.findByListingIdAndBuyerIdAndStatus(
+                        listingId,
+                        buyerId,
+                        ChatRoomStatus.ACTIVE
+                )
+                .map(AppointmentChatRoomDto::from);
+    }
+
     public ChatRoomDetailDto getChatRoom(Long memberId, Long chatRoomId) {
         ChatRoom chatRoom = chatRoomRepository.findById(chatRoomId)
                 .filter(room -> room.getStatus() == ChatRoomStatus.ACTIVE)

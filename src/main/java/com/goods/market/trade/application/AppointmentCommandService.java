@@ -1,28 +1,25 @@
 package com.goods.market.trade.application;
 
-import com.goods.market.chat.domain.ChatRoom;
-import com.goods.market.chat.domain.ChatRoomStatus;
-import com.goods.market.chat.infrastructure.ChatRoomRepository;
+import com.goods.market.chat.application.ChatQueryService;
+import com.goods.market.chat.application.dto.AppointmentChatRoomDto;
 import com.goods.market.common.event.DomainEventPublisher;
 import com.goods.market.common.event.events.TradeAppointmentReminderDueEvent;
 import com.goods.market.common.event.events.TradeAppointmentCanceledEvent;
 import com.goods.market.common.event.events.TradeAppointmentScheduledEvent;
 import com.goods.market.common.event.events.TradeAppointmentTradePromptEvent;
+import com.goods.market.listing.application.ListingQueryService;
+import com.goods.market.listing.application.dto.AppointmentListingDto;
+import com.goods.market.member.application.MemberQueryService;
+import com.goods.market.member.application.dto.AppointmentMemberDto;
 import com.goods.market.trade.application.dto.AppointmentDto;
 import com.goods.market.trade.application.dto.TradePromptDto;
 import com.goods.market.trade.domain.Appointment;
+import com.goods.market.trade.domain.AppointmentSchedulingPolicy;
 import com.goods.market.trade.domain.AppointmentStatus;
 import com.goods.market.trade.infrastructure.AppointmentRepository;
-import com.goods.market.listing.domain.Listing;
-import com.goods.market.listing.domain.ListingRepository;
-import com.goods.market.listing.domain.Status;
-import com.goods.market.member.domain.Member;
-import com.goods.market.member.infrastructure.member.MemberJpaRepository;
-import com.goods.market.trade.exception.AppointmentBadRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,30 +31,34 @@ import org.springframework.transaction.annotation.Transactional;
 public class AppointmentCommandService {
 
     private final AppointmentRepository appointmentRepository;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ListingRepository listingRepository;
-    private final MemberJpaRepository memberJpaRepository;
+    private final ChatQueryService chatQueryService;
+    private final ListingQueryService listingQueryService;
+    private final MemberQueryService memberQueryService;
     private final DomainEventPublisher domainEventPublisher;
+
     @Transactional
     public AppointmentDto schedule(Long memberId, Long chatRoomId, Instant meetAt, Integer reminderMinutes) {
-        ChatRoom chatRoom = findParticipatingChatRoom(memberId, chatRoomId);
-        Listing listing = listingRepository.findActiveById(chatRoom.getListingId())
-                .orElseThrow(EntityNotFoundException::new);
+        AppointmentChatRoomDto chatRoom = chatQueryService.getParticipatingAppointmentChatRoom(memberId, chatRoomId);
+        AppointmentListingDto listing = listingQueryService.getAppointmentListing(chatRoom.listingId());
 
-        validateSchedulableListing(listing, chatRoom);
+        AppointmentSchedulingPolicy.validateSchedulableListing(
+                listing.status(),
+                listing.reserverId(),
+                chatRoom.buyerId()
+        );
 
         appointmentRepository.findTopByListingIdAndBuyerIdAndStatusOrderByCreatedAtDesc(
-                        chatRoom.getListingId(),
-                        chatRoom.getBuyerId(),
+                        chatRoom.listingId(),
+                        chatRoom.buyerId(),
                         AppointmentStatus.SCHEDULED
                 )
                 .ifPresent(Appointment::cancel); // 기존 약속이 존재한다면 cancel
 
         // 새 약속 생성
         Appointment appointment = Appointment.schedule(
-                chatRoom.getListingId(),
-                chatRoom.getSellerId(),
-                chatRoom.getBuyerId(),
+                chatRoom.listingId(),
+                chatRoom.sellerId(),
+                chatRoom.buyerId(),
                 meetAt,
                 reminderMinutes
         );
@@ -87,6 +88,7 @@ public class AppointmentCommandService {
                 appointment.getBuyerId()
         ));
     }
+
     public Optional<TradePromptDto> getTradePrompt(Long memberId) {
         return appointmentRepository
                 .findBySellerIdAndStatusAndTradePromptSentAtIsNotNullAndTradePromptDismissedAtIsNullOrderByTradePromptSentAtDesc(
@@ -154,69 +156,44 @@ public class AppointmentCommandService {
         }
     }
 
-    private ChatRoom findParticipatingChatRoom(Long memberId, Long chatRoomId) {
-        return chatRoomRepository.findById(chatRoomId)
-                .filter(room -> room.getStatus() == ChatRoomStatus.ACTIVE)
-                .filter(room -> room.isParticipant(memberId))
-                .orElseThrow(EntityNotFoundException::new);
-    }
-
     private void validateParticipant(Appointment appointment, Long memberId) {
         if (!appointment.getSellerId().equals(memberId) && !appointment.getBuyerId().equals(memberId)) {
             throw new EntityNotFoundException();
         }
     }
 
-    private void validateSchedulableListing(Listing listing, ChatRoom chatRoom) {
-        if (listing.getStatus() == Status.SOLD_OUT) {
-            throw new AppointmentBadRequestException("거래 완료된 게시글입니다.");
-        }
-        if (listing.getStatus() == Status.RESERVED
-                && !Objects.equals(listing.getReserverId(), chatRoom.getBuyerId())) {
-            throw new AppointmentBadRequestException("다른 사람과 거래중입니다.");
-        }
-        if (listing.getStatus() != Status.PUBLISHED && listing.getStatus() != Status.RESERVED) {
-            throw new AppointmentBadRequestException("약속을 만들 수 없는 게시글입니다.");
-        }
-    }
-
     // 판매글이 삭제되지 않고, 예약중인지 확인
     private boolean isTradePromptEligible(Appointment appointment) {
-        Listing listing = listingRepository.findActiveById(appointment.getListingId())
+        AppointmentListingDto listing = listingQueryService.findAppointmentListing(appointment.getListingId())
                 .orElse(null);
 
-        if (listing == null || listing.getStatus() != Status.RESERVED) {
+        if (listing == null || !AppointmentSchedulingPolicy.isReservedListing(listing.status())) {
             return false;
         }
 
-        return chatRoomRepository.findByListingIdAndBuyerIdAndStatus(
-                        appointment.getListingId(),
-                        appointment.getBuyerId(),
-                        ChatRoomStatus.ACTIVE
-                )
+        return chatQueryService.findActiveAppointmentChatRoom(appointment.getListingId(), appointment.getBuyerId())
                 .isPresent();
     }
 
     private TradePromptDto toTradePromptResponse(Appointment appointment) {
-        ChatRoom chatRoom = chatRoomRepository.findByListingIdAndBuyerIdAndStatus(
+        AppointmentChatRoomDto chatRoom = chatQueryService.findActiveAppointmentChatRoom(
                         appointment.getListingId(),
-                        appointment.getBuyerId(),
-                        ChatRoomStatus.ACTIVE
+                        appointment.getBuyerId()
                 )
                 .orElseThrow(EntityNotFoundException::new);
-        Listing listing = listingRepository.findActiveById(appointment.getListingId())
-                .orElseThrow(EntityNotFoundException::new);
+        AppointmentListingDto listing = listingQueryService.getAppointmentListing(appointment.getListingId());
 
-        Member buyer = memberJpaRepository.findById(appointment.getBuyerId())
-                .orElse(null);
+        String buyerNickname = memberQueryService.findAppointmentMember(appointment.getBuyerId())
+                .map(AppointmentMemberDto::nickname)
+                .orElse("");
 
         return new TradePromptDto(
                 appointment.getId(),
                 appointment.getListingId(),
-                chatRoom.getId(),
+                chatRoom.chatRoomId(),
                 appointment.getBuyerId(),
-                buyer != null ? buyer.getNickname() : "",
-                listing.getTitle()
+                buyerNickname,
+                listing.title()
         );
     }
 }

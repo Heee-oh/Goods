@@ -5,8 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface TradeRepository extends JpaRepository<Trade, Long>, TradeQueryRepositoryCustom {
+public interface TradeJpaRepository extends JpaRepository<Trade, Long>, TradeQueryRepositoryCustom {
 
     Optional<Trade> findByListingId(Long listingId);
+
 
 }

@@ -1,5 +1,6 @@
 package com.goods.market.member.application;
 
+import com.goods.market.member.application.dto.AppointmentMemberDto;
 import com.goods.market.member.application.dto.InterestDto;
 import com.goods.market.member.application.dto.MemberDto;
 import com.goods.market.member.application.dto.MemberRegionDto;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -39,5 +41,10 @@ public class MemberQueryService {
     }
     public boolean isInterested(Long memberId, Long listingId) {
         return interestJpaRepository.existsByListingIdAndMemberId(listingId, memberId);
+    }
+
+    public Optional<AppointmentMemberDto> findAppointmentMember(Long memberId) {
+        return memberJpaRepository.findById(memberId)
+                .map(AppointmentMemberDto::from);
     }
 }

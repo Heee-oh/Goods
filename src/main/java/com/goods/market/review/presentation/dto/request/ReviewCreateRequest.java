@@ -10,9 +10,6 @@ public record ReviewCreateRequest(
         Long tradeId,
 
         @NotNull
-        Boolean isSeller,
-
-        @NotNull
         @Min(1)
         @Max(5)
         Integer rating,

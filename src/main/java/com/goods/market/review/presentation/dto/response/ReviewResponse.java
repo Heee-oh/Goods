@@ -8,7 +8,6 @@ public record ReviewResponse(
         Long listingId,
         Long writerId,
         Long targetId,
-        boolean isSeller,
         int rating,
         String comment
 ) {
@@ -19,7 +18,6 @@ public record ReviewResponse(
                 review.getListingId(),
                 review.getWriterId(),
                 review.getTargetId(),
-                review.isSeller(),
                 review.getRating(),
                 review.getComment()
         );
